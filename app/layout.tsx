@@ -1,11 +1,27 @@
+import { Outfit } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { SupabaseProvider } from '@/lib/supabase-provider'
 import './globals.css'
 
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'galla — Simple business, clear mind.',
   description: 'A premium business ledger for modern merchants.',
+  icons: {
+    icon: [
+      { url: '/galla_logo.png' },
+      { url: '/icon-light-32x32.png', sizes: '32x32' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180' },
+    ],
+  },
 }
 
 export const viewport: Viewport = {
@@ -17,12 +33,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="bg-[#f5f2ed]">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      </head>
-      <body className="antialiased">
+      <body className={`${outfit.className} antialiased`}>
         <SupabaseProvider>
           {children}
         </SupabaseProvider>

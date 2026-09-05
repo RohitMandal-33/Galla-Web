@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Sparkles, Eye, EyeOff } from 'lucide-react'
@@ -50,7 +51,7 @@ export default function AuthPage() {
       <div className="auth-card">
         {/* Brand */}
         <div className="auth-brand">
-          <div className="brand-mark">g</div>
+          <Image src="/galla_logo.png" alt="Galla" width={40} height={40} className="auth-logo-img" priority />
           <span className="brand-name">galla</span>
         </div>
 
