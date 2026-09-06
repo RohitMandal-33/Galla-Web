@@ -92,7 +92,9 @@ export function Invoices({ business }: { business: Business | null }) {
               Thank you for your business.<br /><span>galla · {business?.name ?? 'My Business'}</span>
             </div>
           </div>
-          <button className="outline-button print-button"><FileText size={15} /> Print invoice</button>
+          <button className="outline-button print-button" onClick={() => window.print()}>
+            <FileText size={15} /> Print invoice
+          </button>
         </div>
       </div>
     </div>

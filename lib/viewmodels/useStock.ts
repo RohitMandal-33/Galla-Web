@@ -35,5 +35,9 @@ export function useStockViewModel() {
   const lowCount = items.filter(i => i.current_quantity <= i.low_stock_threshold && i.current_quantity > 0).length
   const outCount = items.filter(i => i.current_quantity === 0).length
 
-  return { items, loading, search, setSearch, filterLow, setFilterLow, filtered, totalValue, lowCount, outCount }
+  const handleItemAdded = (newItem: InventoryItem) => {
+    setItems(prev => [...prev, newItem].sort((a, b) => a.name.localeCompare(b.name)))
+  }
+
+  return { items, loading, search, setSearch, filterLow, setFilterLow, filtered, totalValue, lowCount, outCount, handleItemAdded }
 }

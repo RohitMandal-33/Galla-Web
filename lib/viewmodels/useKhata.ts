@@ -64,6 +64,15 @@ export function useKhataViewModel() {
 
   const party = filteredParties[selected]
 
+  const reloadParty = async (partyId: string) => {
+    // Reload full list so balance updates
+    const p = await getParties()
+    setParties(p)
+    // Reload transactions for the given party
+    const txns = await getPartyTransactions(partyId)
+    setPartyTxns(txns)
+  }
+
   return {
     parties,
     selected,
@@ -78,5 +87,6 @@ export function useKhataViewModel() {
     loading,
     reloadParties,
     handlePartyAdded,
+    reloadParty,
   }
 }

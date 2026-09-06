@@ -9,13 +9,15 @@ import type { Business } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { AddPartyModal } from '@/components/modals/AddPartyModal'
+import { KhataTransactionModal } from '@/components/modals/KhataTransactionModal'
 
 export function Khata({ business }: { business: Business | null }) {
   const currency = business?.currency ?? 'NPR'
   const [showAddParty, setShowAddParty] = useState(false)
+  const [txnMode, setTxnMode] = useState<'udhaar' | 'payment' | null>(null)
   const {
     parties, selected, setSelected, filter, setFilter, search, setSearch,
-    filteredParties, party, partyTxns, loading, handlePartyAdded,
+    filteredParties, party, partyTxns, loading, handlePartyAdded, reloadParty,
   } = useKhataViewModel()
 
   if (loading) return <div className="page-content"><Spinner /></div>
@@ -105,8 +107,12 @@ export function Khata({ business }: { business: Business | null }) {
                 <small>{party.balance_minor >= 0 ? 'They owe you' : 'You owe them'}</small>
               </div>
               <div className="statement-actions">
-                <button className="amber-button"><ArrowUpRight size={15} /> Give udhaar</button>
-                <button className="green-button"><ArrowDownLeft size={15} /> Receive payment</button>
+                <button className="amber-button" onClick={() => setTxnMode('udhaar')}>
+                  <ArrowUpRight size={15} /> Give udhaar
+                </button>
+                <button className="green-button" onClick={() => setTxnMode('payment')}>
+                  <ArrowDownLeft size={15} /> Receive payment
+                </button>
               </div>
             </div>
             <div className="statement-table">
@@ -127,7 +133,9 @@ export function Khata({ business }: { business: Business | null }) {
                 </div>
               ))}
             </div>
-            <button className="outline-button"><FileText size={15} /> Download statement</button>
+            <button className="outline-button" onClick={() => window.print()}>
+              <FileText size={15} /> Download statement
+            </button>
           </div>
         ) : (
           <div className="statement-pane" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9b9e97' }}>
@@ -140,6 +148,17 @@ export function Khata({ business }: { business: Business | null }) {
         <AddPartyModal
           close={() => setShowAddParty(false)}
           onSaved={handlePartyAdded}
+          currency={currency}
+        />
+      )}
+
+      {txnMode && party && (
+        <KhataTransactionModal
+          partyId={party.id}
+          partyName={party.name}
+          mode={txnMode}
+          close={() => setTxnMode(null)}
+          onSaved={() => reloadParty(party.id)}
           currency={currency}
         />
       )}

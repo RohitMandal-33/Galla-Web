@@ -1,14 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { MoreHorizontal, Package, Plus, Search } from 'lucide-react'
 import { useStockViewModel } from '@/lib/viewmodels/useStock'
 import { minorToDisplay } from '@/lib/queries'
 import type { Business, InventoryItem } from '@/lib/types'
 import { Spinner } from '@/components/ui/Spinner'
+import { AddItemModal } from '@/components/modals/AddItemModal'
 
 export function Stock({ business }: { business: Business | null }) {
   const currency = business?.currency ?? 'NPR'
-  const { items, loading, search, setSearch, filterLow, setFilterLow, filtered, totalValue, lowCount, outCount } = useStockViewModel()
+  const [showAddItem, setShowAddItem] = useState(false)
+  const { items, loading, search, setSearch, filterLow, setFilterLow, filtered, totalValue, lowCount, outCount, handleItemAdded } = useStockViewModel()
 
   const stockStatus = (item: InventoryItem) => {
     if (item.current_quantity === 0) return 'Critical'
@@ -26,7 +29,9 @@ export function Stock({ business }: { business: Business | null }) {
           <h1>Stock<span className="title-dot">.</span></h1>
           <p className="page-subtitle">{items.length} items in your inventory, worth {minorToDisplay(totalValue, currency)}.</p>
         </div>
-        <button className="primary-button"><Plus size={17} /> Add item</button>
+        <button className="primary-button" onClick={() => setShowAddItem(true)}>
+          <Plus size={17} /> Add item
+        </button>
       </div>
 
       <div className="stock-summary">
@@ -45,7 +50,6 @@ export function Stock({ business }: { business: Business | null }) {
           <div className="stock-filters">
             <button className={`filter-chip ${!filterLow ? 'active' : ''}`} onClick={() => setFilterLow(false)}>All items</button>
             <button className={`filter-chip ${filterLow ? 'active' : ''}`} onClick={() => setFilterLow(true)}>Low stock</button>
-            <button className="icon-button"><MoreHorizontal size={18} /></button>
           </div>
         </div>
         <div className="stock-table">
@@ -53,8 +57,15 @@ export function Stock({ business }: { business: Business | null }) {
             <span>Item</span><span>Current stock</span><span>Cost price</span><span>Sale price</span><span>Valuation</span><span>Status</span><span />
           </div>
           {filtered.length === 0 && (
-            <div style={{ padding: '24px', textAlign: 'center', color: '#9b9e97', fontStyle: 'italic', fontSize: '12px' }}>
-              No items found. Add your first inventory item.
+            <div style={{ padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <p style={{ margin: 0, color: '#9b9e97', fontStyle: 'italic', fontSize: '12px' }}>
+                {search ? `No items match "${search}"` : filterLow ? 'No low-stock items.' : 'No items yet. Add your first inventory item.'}
+              </p>
+              {!search && !filterLow && (
+                <button className="secondary-button" onClick={() => setShowAddItem(true)} style={{ fontSize: '11px', padding: '7px 11px' }}>
+                  <Plus size={14} /> Add first item
+                </button>
+              )}
             </div>
           )}
           {filtered.map(item => {
@@ -73,12 +84,22 @@ export function Stock({ business }: { business: Business | null }) {
                 <span className={`stock-status ${status === 'Healthy' ? 'healthy' : status === 'Low stock' ? 'low' : 'critical'}`}>
                   <i />{status}
                 </span>
-                <button className="more-button"><MoreHorizontal size={17} /></button>
+                <button className="more-button" aria-label={`More options for ${item.name}`}>
+                  <MoreHorizontal size={17} />
+                </button>
               </div>
             )
           })}
         </div>
       </div>
+
+      {showAddItem && (
+        <AddItemModal
+          close={() => setShowAddItem(false)}
+          onSaved={handleItemAdded}
+          currency={currency}
+        />
+      )}
     </div>
   )
 }

@@ -127,6 +127,10 @@ main { max-width: 1500px; margin: 0 auto; }.page-content { padding: 33px 39px 55
 .add-party-modal { width: min(460px, 100%); }
 .input-currency-wrapper { position: relative; }.currency-prefix { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #9aa09a; font-weight: 600; pointer-events: none; z-index: 1; }.input-currency-wrapper input { width: 100%; }
 .balance-direction-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }.balance-btn { border: 1px solid #e6e1d8; background: #f7f5f1; color: #78817b; border-radius: 5px; padding: 8px 10px; font-size: 10px; font-weight: 600; cursor: pointer; transition: background 0.14s, color 0.14s, border-color 0.14s; }.balance-btn:hover { background: #eeeae4; }.balance-btn.active.collect { background: #edf5ee; color: #306b4b; border-color: #cee1d0; }.balance-btn.active.pay { background: #fdf0ee; color: #9a4f44; border-color: #f0cdc9; }
+.add-item-modal { width: min(520px, 100%); }
+.modal-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.khata-txn-banner { display: flex; align-items: center; gap: 7px; padding: 10px 13px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 18px; }.khata-txn-banner.udhaar { background: #fff8ec; color: #9b7225; border: 1px solid #eedd9f; }.khata-txn-banner.payment { background: #edf5ee; color: #306b4b; border: 1px solid #cee1d0; }
+.amber-solid-button { background: #b08b30 !important; }
 @media (max-width: 1050px) and (min-width: 721px) {
   .hero-grid { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(4, 1fr); }

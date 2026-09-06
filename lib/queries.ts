@@ -214,3 +214,75 @@ export async function addParty(entry: {
 
   return data as Party
 }
+
+/** Add a new inventory item */
+export async function addInventoryItem(entry: {
+  name: string
+  sku?: string | null
+  unit: string
+  current_quantity: number
+  low_stock_threshold: number
+  cost_price_minor: number
+  sale_price_minor: number
+}): Promise<InventoryItem> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('inventory_items') as any)
+    .insert({
+      business_id: user.id,
+      name: entry.name.trim(),
+      sku: entry.sku?.trim() || null,
+      unit: entry.unit.trim() || 'pcs',
+      current_quantity: entry.current_quantity,
+      low_stock_threshold: entry.low_stock_threshold,
+      cost_price_minor: entry.cost_price_minor,
+      sale_price_minor: entry.sale_price_minor,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as InventoryItem
+}
+
+/** Record a khata transaction (give udhaar or receive payment) */
+export async function addKhataTransaction(entry: {
+  party_id: string
+  direction: 'money_in' | 'money_out'
+  amount_minor: number
+  note?: string
+  is_credit?: boolean
+}): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('transactions') as any).insert({
+    business_id: user.id,
+    party_id: entry.party_id,
+    direction: entry.direction,
+    amount_minor: entry.amount_minor,
+    note: entry.note ?? null,
+    is_credit: entry.is_credit ?? true,
+    occurred_at: new Date().toISOString(),
+  })
+  if (error) throw error
+
+  // Update party balance: money_in decreases what they owe, money_out increases it
+  const delta = entry.direction === 'money_in' ? -entry.amount_minor : entry.amount_minor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: partyData, error: fetchErr } = await (supabase.from('parties') as any)
+    .select('balance_minor')
+    .eq('id', entry.party_id)
+    .single()
+  if (!fetchErr && partyData) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('parties') as any)
+      .update({ balance_minor: partyData.balance_minor + delta, updated_at: new Date().toISOString() })
+      .eq('id', entry.party_id)
+  }
+}
