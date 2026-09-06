@@ -14,11 +14,14 @@ export function useKhataViewModel() {
   const [filter, setFilter] = useState<KhataFilter>('all')
   const [search, setSearch] = useState('')
 
+  const reloadParties = async () => {
+    const p = await getParties()
+    setParties(p)
+    return p
+  }
+
   useEffect(() => {
-    getParties().then(p => {
-      setParties(p)
-      setLoading(false)
-    })
+    reloadParties().then(() => setLoading(false))
   }, [])
 
   const filteredParties = useMemo(() => {
@@ -29,14 +32,51 @@ export function useKhataViewModel() {
     return list
   }, [parties, filter, search])
 
+  const handlePartyAdded = (newParty: Party) => {
+    setParties(prev => {
+      const filtered = prev.filter(p => p.id !== newParty.id)
+      return [newParty, ...filtered].sort((a, b) => a.name.localeCompare(b.name))
+    })
+    setFilter('all')
+    setSearch('')
+    // In sorted list, find the index of newParty
+    setTimeout(() => {
+      setParties(curr => {
+        const idx = curr.findIndex(p => p.id === newParty.id)
+        if (idx >= 0) setSelected(idx)
+        return curr
+      })
+    }, 0)
+  }
+
   useEffect(() => {
-    if (filteredParties.length === 0) return
-    const party = filteredParties[selected] ?? parties[0]
-    if (!party) return
-    getPartyTransactions(party.id).then(setPartyTxns)
-  }, [filteredParties, parties, selected]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (filteredParties.length === 0) {
+      setPartyTxns([])
+      return
+    }
+    const currentParty = filteredParties[selected] ?? filteredParties[0]
+    if (!currentParty) {
+      setPartyTxns([])
+      return
+    }
+    getPartyTransactions(currentParty.id).then(setPartyTxns)
+  }, [filteredParties, selected])
 
   const party = filteredParties[selected]
 
-  return { parties, selected, setSelected, filter, setFilter, search, setSearch, filteredParties, party, partyTxns, loading }
+  return {
+    parties,
+    selected,
+    setSelected,
+    filter,
+    setFilter,
+    search,
+    setSearch,
+    filteredParties,
+    party,
+    partyTxns,
+    loading,
+    reloadParties,
+    handlePartyAdded,
+  }
 }

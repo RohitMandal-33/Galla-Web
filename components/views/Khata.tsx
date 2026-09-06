@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, FileText, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useKhataViewModel } from '@/lib/viewmodels/useKhata'
 import { minorToDisplay } from '@/lib/queries'
@@ -7,12 +8,14 @@ import { avatarColor, formatShortDate, initials } from '@/lib/format'
 import type { Business } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
+import { AddPartyModal } from '@/components/modals/AddPartyModal'
 
 export function Khata({ business }: { business: Business | null }) {
   const currency = business?.currency ?? 'NPR'
+  const [showAddParty, setShowAddParty] = useState(false)
   const {
     parties, selected, setSelected, filter, setFilter, search, setSearch,
-    filteredParties, party, partyTxns, loading,
+    filteredParties, party, partyTxns, loading, handlePartyAdded,
   } = useKhataViewModel()
 
   if (loading) return <div className="page-content"><Spinner /></div>
@@ -25,7 +28,9 @@ export function Khata({ business }: { business: Business | null }) {
           <h1>Khata<span className="title-dot">.</span></h1>
           <p className="page-subtitle">Keep every promise and payment in one clear place.</p>
         </div>
-        <button className="primary-button"><Plus size={17} /> Add party</button>
+        <button className="primary-button" onClick={() => setShowAddParty(true)}>
+          <Plus size={17} /> Add party
+        </button>
       </div>
 
       <div className="khata-layout card">
@@ -34,7 +39,9 @@ export function Khata({ business }: { business: Business | null }) {
           <div className="pane-header">
             <strong>All parties</strong>
             <span className="count-badge">{parties.length}</span>
-            <button className="icon-button"><Plus size={17} /></button>
+            <button className="icon-button" onClick={() => setShowAddParty(true)} aria-label="Add party">
+              <Plus size={17} />
+            </button>
           </div>
           <div className="small-search">
             <Search size={15} />
@@ -47,9 +54,16 @@ export function Khata({ business }: { business: Business | null }) {
           </div>
           <div className="party-list">
             {filteredParties.length === 0 && (
-              <p style={{ padding: '20px', color: '#9b9e97', fontSize: '12px', textAlign: 'center' }}>
-                No parties yet. Add your first party.
-              </p>
+              <div style={{ padding: '28px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                <p style={{ margin: 0, color: '#9b9e97', fontSize: '12px' }}>
+                  {search ? `No parties match "${search}"` : 'No parties yet in your Khata.'}
+                </p>
+                {!search && (
+                  <button className="secondary-button" onClick={() => setShowAddParty(true)} style={{ fontSize: '11px', padding: '7px 11px' }}>
+                    <Plus size={14} /> Add your first party
+                  </button>
+                )}
+              </div>
             )}
             {filteredParties.map((item, index) => (
               <button
@@ -121,6 +135,14 @@ export function Khata({ business }: { business: Business | null }) {
           </div>
         )}
       </div>
+
+      {showAddParty && (
+        <AddPartyModal
+          close={() => setShowAddParty(false)}
+          onSaved={handlePartyAdded}
+          currency={currency}
+        />
+      )}
     </div>
   )
 }

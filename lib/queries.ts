@@ -167,3 +167,50 @@ export async function getInvoices() {
   if (error) throw error
   return (data ?? []) as unknown as import('./types').Invoice[]
 }
+
+/** Add a new party to Khata */
+export async function addParty(entry: {
+  name: string
+  phone?: string | null
+  balance_minor?: number
+}): Promise<Party> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('parties') as any)
+    .insert({
+      business_id: user.id,
+      name: entry.name.trim(),
+      phone: entry.phone?.trim() || null,
+      balance_minor: entry.balance_minor ?? 0,
+      remind_enabled: false,
+      remind_every_days: 14,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+
+  // If there is an opening balance, record an initial ledger transaction for party history
+  if (entry.balance_minor && entry.balance_minor !== 0) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('transactions') as any).insert({
+        business_id: user.id,
+        party_id: data.id,
+        direction: entry.balance_minor > 0 ? 'money_out' : 'money_in',
+        amount_minor: Math.abs(entry.balance_minor),
+        note: 'Opening balance',
+        category: 'Opening Balance',
+        is_credit: true,
+        occurred_at: new Date().toISOString(),
+      })
+    } catch {
+      // Non-fatal: party was successfully created even if initial transaction insert failed
+    }
+  }
+
+  return data as Party
+}
