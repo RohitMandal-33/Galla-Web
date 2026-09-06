@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import {
   Activity,
   ArrowDownLeft,
@@ -17,6 +18,7 @@ import { avatarColor, formatOccurred, initials } from '@/lib/format'
 import type { Business, Transaction } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
+import { InteractiveRupeeCrest } from '@/components/ui/InteractiveRupeeCrest'
 
 function CashPulse() {
   const points = [42, 55, 49, 68, 58, 77, 70, 86, 72, 91, 84, 96]
@@ -145,17 +147,24 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
         <>
           <section className="hero-grid">
             <div className="cash-hero">
+              <div className="cash-hero-bg-wrap" aria-hidden="true">
+                <Image
+                  src="/himalaya.jpg"
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 450px"
+                  className="cash-hero-bg-img"
+                />
+                <div className="cash-hero-overlay" />
+              </div>
               <div className="hero-top">
                 <div>
                   <span className="hero-eyebrow">Cash in hand</span>
                   <h2>{minorToDisplay(kpis?.cashInHand ?? 0, currency)}</h2>
                   <div className="hero-change"><ArrowUpRight size={14} /> Live balance <span>updated now</span></div>
                 </div>
-                <div className="hero-art">
-                  <div className="hero-ring ring-one" />
-                  <div className="hero-ring ring-two" />
-                  <span>रु</span>
-                </div>
+                <InteractiveRupeeCrest />
               </div>
               <div className="hero-footer">
                 <span>Based on all recorded transactions</span>
