@@ -12,10 +12,12 @@ import {
   Menu,
   MoreHorizontal,
   Settings,
+  Sparkles,
   Store,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useSupabase } from '@/lib/supabase-provider'
+import { resetDemoStore } from '@/lib/demo'
 import { avatarColor, initials } from '@/lib/format'
 import type { Business } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
@@ -43,7 +45,7 @@ export function Sidebar({
   navItems: { label: NavKey; icon: LucideIcon }[]
   onOpenShortcuts?: () => void
 }) {
-  const { user, signOut } = useSupabase()
+  const { user, isDemo, signOut } = useSupabase()
   const displayName = business?.name ?? 'My Business'
   const userInitials = initials(displayName)
   const userColor = avatarColor(displayName)
@@ -245,10 +247,26 @@ export function Sidebar({
                 <div className="profile-details">
                   <strong>{displayName}</strong>
                   <span className="profile-email">{user?.email ?? 'merchant@galla.app'}</span>
-                  <span className="role-tag">Owner</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                    <span className="role-tag">Owner</span>
+                    {isDemo && <span className="role-tag" style={{ background: 'rgba(217,119,6,0.15)', color: '#b45309', borderColor: 'rgba(217,119,6,0.3)' }}>Demo Store</span>}
+                  </div>
                 </div>
               </div>
               <div className="popover-divider" />
+              {isDemo && (
+                <button
+                  className="popover-action"
+                  onClick={() => {
+                    resetDemoStore()
+                    setProfileMenuOpen(false)
+                  }}
+                  title="Reload pristine demo data"
+                >
+                  <Sparkles size={15} style={{ color: '#d97706' }} />
+                  <span>Reset Demo Data</span>
+                </button>
+              )}
               <button
                 className="popover-action"
                 onClick={() => handleSelectNav('Settings')}

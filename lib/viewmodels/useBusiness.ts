@@ -9,8 +9,13 @@ export function useBusinessViewModel(user: User | null) {
   const [business, setBusiness] = useState<Business | null>(null)
 
   useEffect(() => {
-    if (!user) return
     getBusiness().then(setBusiness).catch(console.error)
+
+    const handleDemoChange = () => {
+      getBusiness().then(setBusiness).catch(console.error)
+    }
+    window.addEventListener('galla-demo-data-changed', handleDemoChange)
+    return () => { window.removeEventListener('galla-demo-data-changed', handleDemoChange) }
   }, [user])
 
   return { business, setBusiness }

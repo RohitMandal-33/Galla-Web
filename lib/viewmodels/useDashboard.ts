@@ -32,7 +32,13 @@ export function useDashboardViewModel(currency: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => load())
       .subscribe()
 
-    return () => { sub.unsubscribe() }
+    const handleDemoChange = () => { load() }
+    window.addEventListener('galla-demo-data-changed', handleDemoChange)
+
+    return () => {
+      sub.unsubscribe()
+      window.removeEventListener('galla-demo-data-changed', handleDemoChange)
+    }
   }, [load])
 
   return { kpis, transactions, loading }

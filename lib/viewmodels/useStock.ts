@@ -21,7 +21,15 @@ export function useStockViewModel() {
         getInventoryItems().then(setItems)
       })
       .subscribe()
-    return () => { sub.unsubscribe() }
+    const handleDemoChange = () => {
+      getInventoryItems().then(setItems)
+    }
+    window.addEventListener('galla-demo-data-changed', handleDemoChange)
+
+    return () => {
+      sub.unsubscribe()
+      window.removeEventListener('galla-demo-data-changed', handleDemoChange)
+    }
   }, [])
 
   const filtered = useMemo(() => {

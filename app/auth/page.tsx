@@ -5,10 +5,11 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Sparkles, Eye, EyeOff, Zap } from 'lucide-react'
 
+import { enableDemoMode } from '@/lib/demo'
+
 type Mode = 'login' | 'signup'
 
 const DEMO_EMAIL = 'demo@galla.app'
-const DEMO_PASSWORD = 'demo1234'
 
 export default function AuthPage() {
   const supabase = createClient()
@@ -21,11 +22,24 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
+  const handleTakeDemo = () => {
+    setLoading(true)
+    enableDemoMode()
+    window.location.href = '/'
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setInfo(null)
     setLoading(true)
+
+    // Demo account bypass check
+    if (email.trim().toLowerCase() === DEMO_EMAIL.toLowerCase()) {
+      enableDemoMode()
+      window.location.href = '/'
+      return
+    }
 
     try {
       if (mode === 'signup') {
@@ -48,14 +62,6 @@ export default function AuthPage() {
     }
   }
 
-  const fillDemo = () => {
-    setEmail(DEMO_EMAIL)
-    setPassword(DEMO_PASSWORD)
-    setMode('login')
-    setError(null)
-    setInfo(null)
-  }
-
   return (
     <div className="auth-split-page">
       {/* ── LEFT PANEL: Mobile app showcase ── */}
@@ -71,7 +77,7 @@ export default function AuthPage() {
             <span className="showcase-accent">fully in control.</span>
           </h2>
           <p className="showcase-sub">
-            Cash khata · Udhaar · Stock · Invoices — all in one place, on any device.
+            Cash khata · Udhaar · Stock · Invoices all in one place, on any device.
           </p>
 
           {/* Phone mockup frames with the screenshots */}
@@ -117,7 +123,7 @@ export default function AuthPage() {
 
           <div className="auth-heading">
             <h1>{mode === 'login' ? 'Welcome to Galla' : 'Start for free.'}</h1>
-            <p>{mode === 'login' ? 'Your daily khata — cash, udhaar & stock' : 'Create your galla account in seconds.'}</p>
+            <p>{mode === 'login' ? 'Your daily khata cash, udhaar & stock' : 'Create your galla account in seconds.'}</p>
           </div>
 
           {error && <div className="auth-error">{error}</div>}
@@ -140,7 +146,7 @@ export default function AuthPage() {
               <span className="auth-field-icon">✉</span> Email
               <input
                 type="email"
-                placeholder="demo@galla.app"
+                placeholder="Enter Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -185,30 +191,11 @@ export default function AuthPage() {
             )}
           </div>
 
-          {/* Demo account one-tap button */}
-          <button className="demo-tap-btn" onClick={fillDemo} type="button">
+          {/* Take demo button */}
+          <button className="demo-tap-btn" onClick={handleTakeDemo} type="button" disabled={loading}>
             <Zap size={15} />
-            Use demo account — one tap
+            {loading ? 'Entering demo…' : 'Take demo'}
           </button>
-
-          {/* Demo info card */}
-          <div className="demo-info-card">
-            <div className="demo-info-header">
-              <span><Sparkles size={13} /> Demo account (mock data)</span>
-              <button className="demo-fill-btn" onClick={fillDemo} type="button">Tap to fill</button>
-            </div>
-            <div className="demo-info-row">
-              <span>Email</span>
-              <strong>{DEMO_EMAIL}</strong>
-            </div>
-            <div className="demo-info-row">
-              <span>Password</span>
-              <strong>{DEMO_PASSWORD}</strong>
-            </div>
-            <p className="demo-info-note">
-              Loads Shree Ganesh Kirana mock data: 6 inventory items, 5 parties, 10+ transactions, 1 invoice — graphs become populated
-            </p>
-          </div>
 
           <div className="auth-footer">
             <Sparkles size={12} />

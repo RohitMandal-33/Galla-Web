@@ -22,6 +22,10 @@ export function useKhataViewModel() {
 
   useEffect(() => {
     reloadParties().then(() => setLoading(false))
+
+    const handleDemoChange = () => { reloadParties() }
+    window.addEventListener('galla-demo-data-changed', handleDemoChange)
+    return () => { window.removeEventListener('galla-demo-data-changed', handleDemoChange) }
   }, [])
 
   const filteredParties = useMemo(() => {

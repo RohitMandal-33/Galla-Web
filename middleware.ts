@@ -30,9 +30,19 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-
+  const isDemo = request.cookies.get('galla_demo_mode')?.value === 'true'
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
+
+  if (isDemo) {
+    if (isAuthPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
