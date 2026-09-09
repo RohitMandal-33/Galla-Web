@@ -570,3 +570,81 @@ export async function addKhataTransaction(entry: {
       .eq('id', entry.party_id)
   }
 }
+
+export interface DailyBucket {
+  date: string    // YYYY-MM-DD
+  inflow: number  // minor units
+  outflow: number // minor units
+}
+
+export interface CategoryBreakdown {
+  name: string
+  total: number // minor units
+}
+
+export interface ChartData {
+  daily: DailyBucket[]
+  categories: CategoryBreakdown[]
+}
+
+type ChartTxnRow = { direction: string; amount_minor: number; category: string | null; occurred_at: string }
+
+function buildChartData(transactions: ChartTxnRow[]): ChartData {
+  const today = new Date()
+  today.setHours(23, 59, 59, 999)
+
+  const buckets: Record<string, DailyBucket> = {}
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().split('T')[0]
+    buckets[key] = { date: key, inflow: 0, outflow: 0 }
+  }
+
+  const categoryMap: Record<string, number> = {}
+
+  for (const t of transactions) {
+    const key = t.occurred_at.split('T')[0]
+    if (key in buckets) {
+      if (t.direction === 'money_in') buckets[key].inflow += t.amount_minor
+      else buckets[key].outflow += t.amount_minor
+    }
+    if (t.direction === 'money_out') {
+      const cat = t.category ?? 'Other'
+      categoryMap[cat] = (categoryMap[cat] ?? 0) + t.amount_minor
+    }
+  }
+
+  const categories = Object.entries(categoryMap)
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+
+  return { daily: Object.values(buckets), categories }
+}
+
+/** Chart data: 30-day daily inflow/outflow + expense breakdown by category */
+export async function getChartData(): Promise<ChartData> {
+  const since = new Date()
+  since.setDate(since.getDate() - 30)
+  since.setHours(0, 0, 0, 0)
+
+  if (isDemoMode()) {
+    const txns = getDemoStore().transactions.filter(t => !t.deleted_at)
+    return buildChartData(txns)
+  }
+
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('direction, amount_minor, category, occurred_at')
+      .is('deleted_at', null)
+      .gte('occurred_at', since.toISOString())
+    if (error) throw error
+    return buildChartData((data ?? []) as ChartTxnRow[])
+  } catch {
+    const txns = getDemoStore().transactions.filter(t => !t.deleted_at)
+    return buildChartData(txns)
+  }
+}

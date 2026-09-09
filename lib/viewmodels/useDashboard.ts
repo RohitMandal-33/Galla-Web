@@ -2,19 +2,22 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { getDashboardKPIs, getRecentTransactions } from '@/lib/queries'
+import { getDashboardKPIs, getRecentTransactions, getChartData } from '@/lib/queries'
+import type { ChartData } from '@/lib/queries'
 import type { Transaction } from '@/lib/types'
 
 export function useDashboardViewModel(currency: string) {
   const [kpis, setKpis] = useState<Awaited<ReturnType<typeof getDashboardKPIs>> | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [chartData, setChartData] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     try {
-      const [k, t] = await Promise.all([getDashboardKPIs(currency), getRecentTransactions(20)])
+      const [k, t, c] = await Promise.all([getDashboardKPIs(currency), getRecentTransactions(20), getChartData()])
       setKpis(k)
       setTransactions(t)
+      setChartData(c)
     } catch (e) {
       console.error(e)
     } finally {
@@ -41,5 +44,5 @@ export function useDashboardViewModel(currency: string) {
     }
   }, [load])
 
-  return { kpis, transactions, loading }
+  return { kpis, transactions, chartData, loading }
 }

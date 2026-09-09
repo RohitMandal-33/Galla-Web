@@ -20,11 +20,42 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { InteractiveRupeeCrest } from '@/components/ui/InteractiveRupeeCrest'
 
-function CashPulse() {
-  const points = [42, 55, 49, 68, 58, 77, 70, 86, 72, 91, 84, 96]
-  const out = [34, 42, 38, 48, 44, 55, 50, 61, 53, 64, 61, 68]
-  const path = points.map((point, index) => `${index * 8.7},${104 - point}`).join(' ')
-  const outPath = out.map((point, index) => `${index * 8.7},${104 - point}`).join(' ')
+import type { ChartData } from '@/lib/queries'
+
+const CAT_COLORS = ['#2d6b4d', '#4a9a72', '#c67462', '#e8a06e', '#8b9e8a']
+
+function CashPulse({ daily }: { daily: ChartData['daily'] }) {
+  const W = 96
+  const H = 104
+
+  const maxVal = Math.max(...daily.flatMap(d => [d.inflow, d.outflow]), 1)
+  const step = W / (daily.length - 1 || 1)
+
+  const toY = (v: number) => H - (v / maxVal) * (H - 4) - 2
+
+  const inflowPts = daily.map((d, i) => `${i * step},${toY(d.inflow)}`).join(' ')
+  const outflowPts = daily.map((d, i) => `${i * step},${toY(d.outflow)}`).join(' ')
+
+  // Axis labels — pick max inflow rounded nicely
+  const topLabel = maxVal >= 100000
+    ? `${Math.round(maxVal / 100000 * 10) / 10}L`
+    : maxVal >= 1000
+      ? `${Math.round(maxVal / 100) / 10}k`
+      : `${Math.round(maxVal / 100)}`
+  const midLabel = maxVal >= 100000
+    ? `${Math.round(maxVal / 200000 * 10) / 10}L`
+    : maxVal >= 1000
+      ? `${Math.round(maxVal / 200) / 10}k`
+      : `${Math.round(maxVal / 200)}`
+
+  // X-axis: show day of month for 1st, 8th, 15th, 22nd, today
+  const xLabels = [0, 7, 14, 21, daily.length - 1].map(idx => {
+    const d = daily[idx]
+    if (!d) return ''
+    if (idx === daily.length - 1) return 'Today'
+    return new Date(d.date + 'T00:00:00').getDate().toString()
+  })
+
   return (
     <div className="card pulse-chart">
       <div className="card-heading">
@@ -37,25 +68,69 @@ function CashPulse() {
         <span className="chart-total">Live data</span>
       </div>
       <div className="line-chart">
-        <div className="chart-y"><span>50k</span><span>25k</span><span>0</span></div>
-        <svg viewBox="0 0 96 104" preserveAspectRatio="none" role="img" aria-label="Cash inflow and outflow trend">
+        <div className="chart-y"><span>{topLabel}</span><span>{midLabel}</span><span>0</span></div>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Cash inflow and outflow trend">
           <defs>
             <linearGradient id="area" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0" stopColor="#2d6b4d" stopOpacity=".2" />
               <stop offset="1" stopColor="#2d6b4d" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <polygon points={`0,104 ${path} 96,104`} fill="url(#area)" />
-          <polyline points={path} fill="none" stroke="#2d6b4d" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-          <polyline points={outPath} fill="none" stroke="#c67462" strokeWidth="1.2" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />
+          <polygon
+            points={`0,${H} ${inflowPts} ${W},${H}`}
+            fill="url(#area)"
+          />
+          <polyline points={inflowPts} fill="none" stroke="#2d6b4d" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+          <polyline points={outflowPts} fill="none" stroke="#c67462" strokeWidth="1.2" strokeDasharray="3 2" vectorEffect="non-scaling-stroke" />
         </svg>
       </div>
-      <div className="chart-x"><span>1</span><span>8</span><span>15</span><span>22</span><span>Today</span></div>
+      <div className="chart-x">
+        <span>{xLabels[0]}</span>
+        <span>{xLabels[1]}</span>
+        <span>{xLabels[2]}</span>
+        <span>{xLabels[3]}</span>
+        <span>{xLabels[4]}</span>
+      </div>
     </div>
   )
 }
 
-function CategoryChart() {
+
+function CategoryChart({ categories }: { categories: ChartData['categories'] }) {
+  const total = categories.reduce((s, c) => s + c.total, 0)
+
+  // Build SVG donut segments
+  const R = 36
+  const CX = 50
+  const CY = 50
+  const circumference = 2 * Math.PI * R
+  let offset = 0
+
+  const segments = categories.map((cat, i) => {
+    const pct = total > 0 ? cat.total / total : 0
+    const dash = pct * circumference
+    const seg = (
+      <circle
+        key={cat.name}
+        cx={CX}
+        cy={CY}
+        r={R}
+        fill="none"
+        stroke={CAT_COLORS[i % CAT_COLORS.length]}
+        strokeWidth={14}
+        strokeDasharray={`${dash} ${circumference - dash}`}
+        strokeDashoffset={-offset}
+        style={{ transition: 'stroke-dasharray 0.5s ease' }}
+      />
+    )
+    offset += dash
+    return seg
+  })
+
+  const totalDisplay = total >= 100000
+    ? `${(total / 100000).toFixed(1)}L`
+    : `${(total / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+
   return (
     <div className="card category-card">
       <div className="card-heading">
@@ -63,17 +138,37 @@ function CategoryChart() {
         <button className="icon-button"><MoreHorizontal size={18} /></button>
       </div>
       <div className="donut-wrap">
-        <div className="donut"><div className="donut-center"><strong>Live</strong><span>synced</span></div></div>
+        <div className="donut" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 100 100" width="110" height="110" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+            <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--ink-5, #1e2219)" strokeWidth={14} />
+            {categories.length === 0 ? (
+              <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border, #2a2f27)" strokeWidth={14} />
+            ) : segments}
+          </svg>
+          <div className="donut-center" style={{ position: 'absolute' }}>
+            <strong>{total > 0 ? totalDisplay : '—'}</strong>
+            <span>outflows</span>
+          </div>
+        </div>
         <div className="category-list">
-          <div><i className="cat-a" /><span>Inventory</span><b>—</b></div>
-          <div><i className="cat-b" /><span>Operations</span><b>—</b></div>
-          <div><i className="cat-c" /><span>Utilities</span><b>—</b></div>
-          <div><i className="cat-d" /><span>Other</span><b>—</b></div>
+          {categories.length === 0 ? (
+            <div style={{ color: '#9b9e97', fontStyle: 'italic', fontSize: '0.8rem' }}>No expenses yet</div>
+          ) : categories.map((cat, i) => {
+            const pct = total > 0 ? Math.round((cat.total / total) * 100) : 0
+            return (
+              <div key={cat.name}>
+                <i style={{ background: CAT_COLORS[i % CAT_COLORS.length] }} />
+                <span>{cat.name}</span>
+                <b>{pct}%</b>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
+
 
 function ActivityTable({ transactions, currency }: { transactions: Transaction[]; currency: string }) {
   return (
@@ -119,7 +214,7 @@ function ActivityTable({ transactions, currency }: { transactions: Transaction[]
 
 export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Business | null }) {
   const currency = business?.currency ?? 'NPR'
-  const { kpis, transactions, loading } = useDashboardViewModel(currency)
+  const { kpis, transactions, chartData, loading } = useDashboardViewModel(currency)
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const greeting = (() => {
@@ -203,8 +298,8 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
           </section>
 
           <section className="charts-grid">
-            <CashPulse />
-            <CategoryChart />
+            <CashPulse daily={chartData?.daily ?? []} />
+            <CategoryChart categories={chartData?.categories ?? []} />
           </section>
 
           <ActivityTable transactions={transactions} currency={currency} />
