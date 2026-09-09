@@ -96,19 +96,50 @@ function CashPulse({ daily }: { daily: ChartData['daily'] }) {
 }
 
 
+function EmptyDonut() {
+  // Manually drawn SVG smiley — no emoji rendering issues
+  return (
+    <svg viewBox="0 0 100 100" width="110" height="110" aria-label="No expense data yet" role="img">
+      {/* Dashed track ring */}
+      <circle
+        cx="50" cy="50" r="36"
+        fill="none"
+        stroke="#2a2f27"
+        strokeWidth="14"
+        strokeDasharray="6 4"
+      />
+      {/* Face circle */}
+      <circle cx="50" cy="50" r="16" fill="#2a2f27" />
+      {/* Eyes */}
+      <circle cx="44" cy="46" r="2.2" fill="#9b9e97" />
+      <circle cx="56" cy="46" r="2.2" fill="#9b9e97" />
+      {/* Smile arc */}
+      <path
+        d="M 43 54 Q 50 60 57 54"
+        fill="none"
+        stroke="#9b9e97"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function CategoryChart({ categories }: { categories: ChartData['categories'] }) {
+  const isEmpty = categories.length === 0
   const total = categories.reduce((s, c) => s + c.total, 0)
 
-  // Build SVG donut segments
+  // Build SVG donut segments with a small gap between slices
   const R = 36
   const CX = 50
   const CY = 50
   const circumference = 2 * Math.PI * R
-  let offset = 0
+  const GAP = 2 // px gap between segments
 
+  let offset = 0
   const segments = categories.map((cat, i) => {
     const pct = total > 0 ? cat.total / total : 0
-    const dash = pct * circumference
+    const dash = Math.max(pct * circumference - GAP, 0)
     const seg = (
       <circle
         key={cat.name}
@@ -120,10 +151,9 @@ function CategoryChart({ categories }: { categories: ChartData['categories'] }) 
         strokeWidth={14}
         strokeDasharray={`${dash} ${circumference - dash}`}
         strokeDashoffset={-offset}
-        style={{ transition: 'stroke-dasharray 0.5s ease' }}
       />
     )
-    offset += dash
+    offset += pct * circumference
     return seg
   })
 
@@ -138,36 +168,49 @@ function CategoryChart({ categories }: { categories: ChartData['categories'] }) 
         <button className="icon-button"><MoreHorizontal size={18} /></button>
       </div>
       <div className="donut-wrap">
-        <div className="donut" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 100 100" width="110" height="110" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-            <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--ink-5, #1e2219)" strokeWidth={14} />
-            {categories.length === 0 ? (
-              <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border, #2a2f27)" strokeWidth={14} />
-            ) : segments}
-          </svg>
-          <div className="donut-center" style={{ position: 'absolute' }}>
-            <strong>{total > 0 ? totalDisplay : '—'}</strong>
-            <span>outflows</span>
+        {isEmpty ? (
+          /* ── Empty state: full-width centred layout ── */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%', padding: '8px 0' }}>
+            <EmptyDonut />
+            <p style={{ color: '#9b9e97', fontSize: '0.78rem', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
+              No expenses recorded yet.<br />Add a money-out entry to see the breakdown.
+            </p>
           </div>
-        </div>
-        <div className="category-list">
-          {categories.length === 0 ? (
-            <div style={{ color: '#9b9e97', fontStyle: 'italic', fontSize: '0.8rem' }}>No expenses yet</div>
-          ) : categories.map((cat, i) => {
-            const pct = total > 0 ? Math.round((cat.total / total) * 100) : 0
-            return (
-              <div key={cat.name}>
-                <i style={{ background: CAT_COLORS[i % CAT_COLORS.length] }} />
-                <span>{cat.name}</span>
-                <b>{pct}%</b>
+        ) : (
+          <>
+            {/* Donut with overlay label */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg viewBox="0 0 100 100" width="110" height="110" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+                {/* Track */}
+                <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--ink-5, #1e2219)" strokeWidth={14} />
+                {segments}
+              </svg>
+              <div className="donut-center" style={{ position: 'absolute' }}>
+                <strong>{totalDisplay}</strong>
+                <span>outflows</span>
               </div>
-            )
-          })}
-        </div>
+            </div>
+
+            {/* Legend */}
+            <div className="category-list">
+              {categories.map((cat, i) => {
+                const pct = total > 0 ? Math.round((cat.total / total) * 100) : 0
+                return (
+                  <div key={cat.name}>
+                    <i style={{ background: CAT_COLORS[i % CAT_COLORS.length] }} />
+                    <span>{cat.name}</span>
+                    <b>{pct}%</b>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
 }
+
 
 
 function ActivityTable({ transactions, currency }: { transactions: Transaction[]; currency: string }) {
