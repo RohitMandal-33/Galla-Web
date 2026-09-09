@@ -10,19 +10,32 @@ export function minorToDisplay(minor: number, currency = 'NPR'): string {
 }
 
 /** Fetch business profile for the authenticated user */
-export async function getBusiness(): Promise<Business> {
-  if (isDemoMode()) {
-    return getDemoStore().business
-  }
+export async function getBusiness(userId?: string) {
+  if (isDemoMode()) return getDemoStore().business
 
   try {
     const supabase = createClient()
+    let currentUserId = userId
+    if (!currentUserId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      currentUserId = user?.id
+    }
+
+    if (!currentUserId) {
+      return getDemoStore().business
+    }
+
     const { data, error } = await supabase
       .from('businesses')
       .select('*')
-      .single()
-    if (error) throw error
-    return data as unknown as Business
+      .eq('id', currentUserId) // MUST be 'id', NOT 'user_id'
+      .maybeSingle()
+
+    if (error) {
+      console.error('getBusiness error:', error)
+      return getDemoStore().business
+    }
+    return data as unknown as Business || getDemoStore().business
   } catch (err) {
     if (isDemoMode() || typeof window !== 'undefined') {
       return getDemoStore().business
@@ -254,32 +267,95 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
   }
 }
 
-/** Insert a quick transaction entry */
-export async function addTransaction(entry: {
-  direction: 'money_in' | 'money_out'
-  amount_minor: number
-  note?: string
-  category?: string
-  party_id?: string
-}) {
+export async function addTransaction(
+  userIdOrEntry: string | {
+    direction: 'money_in' | 'money_out'
+    amount_minor?: number
+    amountMinor?: number
+    party_id?: string | null
+    partyId?: string | null
+    inventoryItemId?: string | null
+    invoiceId?: string | null
+    category?: string | null
+    note?: string | null
+    isCredit?: boolean
+    occurredAt?: string
+  },
+  txnObj?: {
+    direction: 'money_in' | 'money_out'
+    amountMinor?: number
+    amount_minor?: number
+    partyId?: string | null
+    party_id?: string | null
+    inventoryItemId?: string | null
+    invoiceId?: string | null
+    category?: string | null
+    note?: string | null
+    isCredit?: boolean
+    is_credit?: boolean
+    occurredAt?: string
+  }
+) {
+  let userId: string | undefined
+  let txn: {
+    direction: 'money_in' | 'money_out'
+    amountMinor: number
+    partyId?: string | null
+    inventoryItemId?: string | null
+    invoiceId?: string | null
+    category?: string | null
+    note?: string | null
+    isCredit?: boolean
+    occurredAt?: string
+  }
+
+  if (typeof userIdOrEntry === 'string') {
+    userId = userIdOrEntry
+    const amountMinor = txnObj?.amountMinor ?? txnObj?.amount_minor ?? 0
+    txn = {
+      direction: txnObj!.direction,
+      amountMinor,
+      partyId: txnObj?.partyId ?? txnObj?.party_id,
+      inventoryItemId: txnObj?.inventoryItemId,
+      invoiceId: txnObj?.invoiceId,
+      category: txnObj?.category,
+      note: txnObj?.note,
+      isCredit: txnObj?.isCredit ?? txnObj?.is_credit,
+      occurredAt: txnObj?.occurredAt,
+    }
+  } else {
+    const amountMinor = userIdOrEntry.amountMinor ?? userIdOrEntry.amount_minor ?? 0
+    txn = {
+      direction: userIdOrEntry.direction,
+      amountMinor,
+      partyId: userIdOrEntry.partyId ?? userIdOrEntry.party_id,
+      inventoryItemId: userIdOrEntry.inventoryItemId,
+      invoiceId: userIdOrEntry.invoiceId,
+      category: userIdOrEntry.category,
+      note: userIdOrEntry.note,
+      isCredit: userIdOrEntry.isCredit,
+      occurredAt: userIdOrEntry.occurredAt,
+    }
+  }
+
   if (isDemoMode()) {
     const store = getDemoStore()
-    const party = entry.party_id ? store.parties.find(p => p.id === entry.party_id) : null
+    const party = txn.partyId ? store.parties.find(p => p.id === txn.partyId) : null
     const newTxn: Transaction = {
-      id: `txn-${Date.now()}`,
+      id: crypto.randomUUID(),
       business_id: 'demo-user-id',
-      party_id: entry.party_id ?? null,
-      inventory_item_id: null,
-      direction: entry.direction,
-      amount_minor: entry.amount_minor,
-      note: entry.note ?? null,
-      category: entry.category ?? null,
-      is_credit: false,
+      party_id: txn.partyId ?? null,
+      inventory_item_id: txn.inventoryItemId ?? null,
+      direction: txn.direction,
+      amount_minor: txn.amountMinor,
+      note: txn.note ?? null,
+      category: txn.category ?? null,
+      is_credit: txn.isCredit ?? false,
       is_adjustment: false,
       is_write_off: false,
       photo_url: null,
-      invoice_id: null,
-      occurred_at: new Date().toISOString(),
+      invoice_id: txn.invoiceId ?? null,
+      occurred_at: txn.occurredAt || new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: null,
@@ -287,50 +363,47 @@ export async function addTransaction(entry: {
     }
     store.transactions.unshift(newTxn)
     saveDemoStore(store)
-    return
+    return newTxn
   }
 
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    const store = getDemoStore()
-    const party = entry.party_id ? store.parties.find(p => p.id === entry.party_id) : null
-    const newTxn: Transaction = {
-      id: `txn-${Date.now()}`,
-      business_id: 'demo-user-id',
-      party_id: entry.party_id ?? null,
-      inventory_item_id: null,
-      direction: entry.direction,
-      amount_minor: entry.amount_minor,
-      note: entry.note ?? null,
-      category: entry.category ?? null,
-      is_credit: false,
-      is_adjustment: false,
-      is_write_off: false,
-      photo_url: null,
-      invoice_id: null,
-      occurred_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-      parties: party ? { name: party.name } : null,
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      // Demo fallback if unauthenticated
+      return addTransaction('demo-user-id', txnObj ?? (userIdOrEntry as any))
     }
-    store.transactions.unshift(newTxn)
-    saveDemoStore(store)
-    return
+    userId = user.id
   }
 
+  const now = new Date().toISOString()
+  const id = crypto.randomUUID()
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('transactions') as any).insert({
-    business_id: user.id,
-    direction: entry.direction,
-    amount_minor: entry.amount_minor,
-    note: entry.note ?? null,
-    category: entry.category ?? null,
-    party_id: entry.party_id ?? null,
-    occurred_at: new Date().toISOString(),
-  })
+  const { data, error } = await (supabase.from('transactions') as any)
+    .insert({
+      id,
+      business_id: userId,
+      direction: txn.direction,
+      amount_minor: txn.amountMinor,
+      party_id: txn.partyId || null,
+      inventory_item_id: txn.inventoryItemId || null,
+      invoice_id: txn.invoiceId || null,
+      category: txn.category || null,
+      note: txn.note || null,
+      is_credit: txn.isCredit ?? false,
+      is_adjustment: false,
+      is_write_off: false,
+      occurred_at: txn.occurredAt || now,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
+    })
+    .select()
+    .single()
+
   if (error) throw error
+  return data
 }
 
 /** Fetch invoices with party name */
@@ -359,10 +432,13 @@ export async function addParty(entry: {
   phone?: string | null
   balance_minor?: number
 }): Promise<Party> {
+  const partyId = crypto.randomUUID()
+  const now = new Date().toISOString()
+
   if (isDemoMode()) {
     const store = getDemoStore()
     const newParty: Party = {
-      id: `party-${Date.now()}`,
+      id: partyId,
       business_id: 'demo-user-id',
       name: entry.name.trim(),
       phone: entry.phone?.trim() || null,
@@ -371,14 +447,14 @@ export async function addParty(entry: {
       remind_every_days: 14,
       last_reminded_at: null,
       settled_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
     }
     store.parties.push(newParty)
 
     if (entry.balance_minor && entry.balance_minor !== 0) {
       store.transactions.unshift({
-        id: `txn-${Date.now()}`,
+        id: crypto.randomUUID(),
         business_id: 'demo-user-id',
         party_id: newParty.id,
         inventory_item_id: null,
@@ -391,9 +467,9 @@ export async function addParty(entry: {
         is_write_off: false,
         photo_url: null,
         invoice_id: null,
-        occurred_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        occurred_at: now,
+        created_at: now,
+        updated_at: now,
         deleted_at: null,
         parties: { name: newParty.name },
       })
@@ -412,12 +488,15 @@ export async function addParty(entry: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('parties') as any)
     .insert({
+      id: partyId,
       business_id: user.id,
       name: entry.name.trim(),
       phone: entry.phone?.trim() || null,
       balance_minor: entry.balance_minor ?? 0,
       remind_enabled: false,
       remind_every_days: 14,
+      created_at: now,
+      updated_at: now,
     })
     .select()
     .single()
@@ -426,16 +505,13 @@ export async function addParty(entry: {
 
   if (entry.balance_minor && entry.balance_minor !== 0) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('transactions') as any).insert({
-        business_id: user.id,
-        party_id: data.id,
+      await addTransaction(user.id, {
         direction: entry.balance_minor > 0 ? 'money_out' : 'money_in',
-        amount_minor: Math.abs(entry.balance_minor),
-        note: 'Opening balance',
+        amountMinor: Math.abs(entry.balance_minor),
+        partyId: data.id,
         category: 'Opening Balance',
-        is_credit: true,
-        occurred_at: new Date().toISOString(),
+        note: 'Opening balance',
+        isCredit: true,
       })
     } catch {
       // Non-fatal
@@ -455,10 +531,13 @@ export async function addInventoryItem(entry: {
   cost_price_minor: number
   sale_price_minor: number
 }): Promise<InventoryItem> {
+  const itemId = crypto.randomUUID()
+  const now = new Date().toISOString()
+
   if (isDemoMode()) {
     const store = getDemoStore()
     const newItem: InventoryItem = {
-      id: `item-${Date.now()}`,
+      id: itemId,
       business_id: 'demo-user-id',
       name: entry.name.trim(),
       sku: entry.sku?.trim() || null,
@@ -467,8 +546,8 @@ export async function addInventoryItem(entry: {
       low_stock_threshold: entry.low_stock_threshold,
       cost_price_minor: entry.cost_price_minor,
       sale_price_minor: entry.sale_price_minor,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
       deleted_at: null,
     }
     store.items.push(newItem)
@@ -483,6 +562,7 @@ export async function addInventoryItem(entry: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('inventory_items') as any)
     .insert({
+      id: itemId,
       business_id: user.id,
       name: entry.name.trim(),
       sku: entry.sku?.trim() || null,
@@ -491,6 +571,9 @@ export async function addInventoryItem(entry: {
       low_stock_threshold: entry.low_stock_threshold,
       cost_price_minor: entry.cost_price_minor,
       sale_price_minor: entry.sale_price_minor,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
     })
     .select()
     .single()
@@ -499,27 +582,69 @@ export async function addInventoryItem(entry: {
   return data as InventoryItem
 }
 
-/** Record a khata transaction (give udhaar or receive payment) */
-export async function addKhataTransaction(entry: {
-  party_id: string
-  direction: 'money_in' | 'money_out'
-  amount_minor: number
-  note?: string
-  is_credit?: boolean
-}): Promise<void> {
+export async function addKhataTransaction(
+  userIdOrParams: string | {
+    partyId?: string
+    party_id?: string
+    direction: 'money_in' | 'money_out'
+    amountMinor?: number
+    amount_minor?: number
+    isCredit?: boolean
+    is_credit?: boolean
+    note?: string
+  },
+  paramsObj?: {
+    partyId?: string
+    party_id?: string
+    direction: 'money_in' | 'money_out'
+    amountMinor?: number
+    amount_minor?: number
+    isCredit?: boolean
+    is_credit?: boolean
+    note?: string
+  }
+) {
+  let userId: string | undefined
+  let params: {
+    partyId: string
+    direction: 'money_in' | 'money_out'
+    amountMinor: number
+    isCredit: boolean
+    note?: string
+  }
+
+  if (typeof userIdOrParams === 'string') {
+    userId = userIdOrParams
+    params = {
+      partyId: (paramsObj?.partyId ?? paramsObj?.party_id)!,
+      direction: paramsObj!.direction,
+      amountMinor: (paramsObj?.amountMinor ?? paramsObj?.amount_minor)!,
+      isCredit: paramsObj?.isCredit ?? paramsObj?.is_credit ?? true,
+      note: paramsObj?.note,
+    }
+  } else {
+    params = {
+      partyId: (userIdOrParams.partyId ?? userIdOrParams.party_id)!,
+      direction: userIdOrParams.direction,
+      amountMinor: (userIdOrParams.amountMinor ?? userIdOrParams.amount_minor)!,
+      isCredit: userIdOrParams.isCredit ?? userIdOrParams.is_credit ?? true,
+      note: userIdOrParams.note,
+    }
+  }
+
   if (isDemoMode()) {
     const store = getDemoStore()
-    const party = store.parties.find(p => p.id === entry.party_id)
+    const party = store.parties.find(p => p.id === params.partyId)
     const newTxn: Transaction = {
-      id: `txn-${Date.now()}`,
+      id: crypto.randomUUID(),
       business_id: 'demo-user-id',
-      party_id: entry.party_id,
+      party_id: params.partyId,
       inventory_item_id: null,
-      direction: entry.direction,
-      amount_minor: entry.amount_minor,
-      note: entry.note ?? (entry.direction === 'money_in' ? 'Payment received' : 'Udhaar given'),
-      category: entry.direction === 'money_in' ? 'Khata Payment' : 'Udhaar Given',
-      is_credit: entry.is_credit ?? true,
+      direction: params.direction,
+      amount_minor: params.amountMinor,
+      note: params.note ?? (params.direction === 'money_in' ? 'Payment received' : 'Udhaar given'),
+      category: params.direction === 'money_in' ? 'Khata Payment' : 'Udhaar Given',
+      is_credit: params.isCredit,
       is_adjustment: false,
       is_write_off: false,
       photo_url: null,
@@ -532,8 +657,14 @@ export async function addKhataTransaction(entry: {
     }
     store.transactions.unshift(newTxn)
 
+    let delta = 0
+    if (params.isCredit) {
+      delta = params.direction === 'money_in' ? params.amountMinor : -params.amountMinor
+    } else {
+      delta = params.direction === 'money_in' ? -params.amountMinor : params.amountMinor
+    }
+
     if (party) {
-      const delta = entry.direction === 'money_in' ? -entry.amount_minor : entry.amount_minor
       party.balance_minor += delta
       party.updated_at = new Date().toISOString()
     }
@@ -542,33 +673,66 @@ export async function addKhataTransaction(entry: {
   }
 
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    userId = user.id
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('transactions') as any).insert({
-    business_id: user.id,
-    party_id: entry.party_id,
-    direction: entry.direction,
-    amount_minor: entry.amount_minor,
-    note: entry.note ?? null,
-    is_credit: entry.is_credit ?? true,
-    occurred_at: new Date().toISOString(),
+  // 1. Record the ledger transaction
+  await addTransaction(userId, {
+    direction: params.direction,
+    amountMinor: params.amountMinor,
+    partyId: params.partyId,
+    isCredit: params.isCredit,
+    note: params.note,
   })
-  if (error) throw error
 
-  const delta = entry.direction === 'money_in' ? -entry.amount_minor : entry.amount_minor
+  // 2. Compute Party balance delta matching Mobile logic:
+  //    - Credit sale to customer (money_in, isCredit=true): debtor owes you (+amount)
+  //    - Customer cash repayment (money_in, isCredit=false): reduces receivable (-amount)
+  //    - Credit purchase from supplier (money_out, isCredit=true): you owe supplier (-amount)
+  //    - Supplier payment made (money_out, isCredit=false): reduces payable (+amount)
+  let delta = 0
+  if (params.isCredit) {
+    delta = params.direction === 'money_in' ? params.amountMinor : -params.amountMinor
+  } else {
+    delta = params.direction === 'money_in' ? -params.amountMinor : params.amountMinor
+  }
+
+  // 3. Fetch current party balance and apply delta
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: partyData, error: fetchErr } = await (supabase.from('parties') as any)
+  const { data: party, error: partyErr } = await (supabase.from('parties') as any)
     .select('balance_minor')
-    .eq('id', entry.party_id)
+    .eq('id', params.partyId)
     .single()
-  if (!fetchErr && partyData) {
+
+  if (!partyErr && party) {
+    const newBalance = (party.balance_minor || 0) + delta
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('parties') as any)
-      .update({ balance_minor: partyData.balance_minor + delta, updated_at: new Date().toISOString() })
-      .eq('id', entry.party_id)
+      .update({
+        balance_minor: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.partyId)
   }
+}
+
+// 4. Soft Delete for any record
+export async function softDeleteRecord(
+  table: 'transactions' | 'parties' | 'inventory_items' | 'invoices',
+  id: string
+) {
+  if (isDemoMode()) return
+
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from(table) as any)
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) throw error
 }
 
 export interface DailyBucket {
