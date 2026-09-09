@@ -15,6 +15,7 @@ import { Reports } from '@/components/views/Reports'
 import { Settings } from '@/components/views/Settings'
 import { QuickAdd } from '@/components/views/QuickAdd'
 import { ShortcutsModal } from '@/components/modals/ShortcutsModal'
+import { RealtimeSync } from '@/components/realtime-sync'
 
 const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
   { label: 'Pulse', icon: LayoutDashboard },
@@ -73,6 +74,7 @@ export default function Page() {
 
   return (
     <div className="app-shell">
+      <RealtimeSync userId={user?.id} />
       <Sidebar
         active={active}
         setActive={setActive}
