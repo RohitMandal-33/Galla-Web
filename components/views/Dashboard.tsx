@@ -277,7 +277,7 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
         </div>
         <div className="title-actions">
           <button className="secondary-button"><Activity size={16} /> Reconcile</button>
-          <button className="primary-button" onClick={onAdd}><Plus size={17} /> Add entry</button>
+          <button className="primary-button" onClick={onAdd}><Plus size={17} /> Add transaction</button>
         </div>
       </div>
 

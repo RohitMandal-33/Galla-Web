@@ -104,6 +104,7 @@ export default function Page() {
           close={() => setShowQuickAdd(false)}
           onSaved={() => setRefreshKey(k => k + 1)}
           currency={business?.currency ?? 'NPR'}
+          onNavigate={(key) => { setShowQuickAdd(false); setActive(key) }}
         />
       )}
 
