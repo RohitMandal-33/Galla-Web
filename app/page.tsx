@@ -89,7 +89,6 @@ export default function Page() {
       <div className="main-shell">
         <Topbar
           onMenu={() => setMenuOpen(prev => !prev)}
-          onAdd={() => setShowQuickAdd(true)}
           query={query}
           setQuery={setQuery}
           business={business}

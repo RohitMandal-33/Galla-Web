@@ -779,10 +779,15 @@ function buildChartData(transactions: ChartTxnRow[]): ChartData {
     }
   }
 
-  const categories = Object.entries(categoryMap)
+  const sortedCategories = Object.entries(categoryMap)
     .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 5)
+  const categories = sortedCategories.length > 5
+    ? [
+        ...sortedCategories.slice(0, 4),
+        { name: 'Other', total: sortedCategories.slice(4).reduce((sum, category) => sum + category.total, 0) },
+      ]
+    : sortedCategories
 
   return { daily: Object.values(buckets), categories }
 }

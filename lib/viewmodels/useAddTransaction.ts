@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react'
 import { addTransaction, getParties, getPartyTransactions, getRecentTransactions } from '@/lib/queries'
 import type { Party, Transaction } from '@/lib/types'
 
-export type TxnType = 'sale' | 'expense' | 'receive' | 'paid' | 'credit' | 'invoice'
+export type TxnType = 'sale' | 'expense' | 'receive' | 'paid' | 'invoice'
 export type PayMethod = 'cash' | 'card'
 
 /** Maps each transaction type to its direction and default category */
 const TYPE_META: Record<TxnType, { direction: 'money_in' | 'money_out'; category: string; isCredit?: boolean }> = {
   sale:    { direction: 'money_in',  category: 'Sales' },
   receive: { direction: 'money_in',  category: 'Payment Received' },
-  credit:  { direction: 'money_in',  category: 'Credit', isCredit: true },
   invoice: { direction: 'money_in',  category: 'Invoice' },
   expense: { direction: 'money_out', category: 'Expense' },
   paid:    { direction: 'money_out', category: 'Payment Made' },
@@ -22,6 +21,7 @@ export function useAddTransactionViewModel(currency: string, onSaved: () => void
   const [payMethod, setPayMethod]   = useState<PayMethod>('cash')
   const [amountStr, setAmountStr]   = useState('')
   const [note, setNote]             = useState('')
+  const [isCredit, setIsCredit]     = useState(false)
   const [saving, setSaving]         = useState(false)
   const [error, setError]           = useState<string | null>(null)
 
@@ -87,7 +87,7 @@ export function useAddTransactionViewModel(currency: string, onSaved: () => void
         note: note || undefined,
         category: meta.category,
         party_id: selectedParty?.id ?? null,
-        isCredit: meta.isCredit ?? false,
+        isCredit,
       })
       onSaved()
       close()
@@ -106,13 +106,14 @@ export function useAddTransactionViewModel(currency: string, onSaved: () => void
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [amountStr, note, txnType, payMethod, selectedParty, saving]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [amountStr, note, txnType, payMethod, selectedParty, isCredit, saving]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     txnType, setTxnType: selectType,
     payMethod, setPayMethod,
     amountStr, setAmountStr: (v: string) => { setAmountStr(v); setError(null) },
     note, setNote,
+    isCredit, setIsCredit,
     saving, error,
     save,
     parties: filteredParties,

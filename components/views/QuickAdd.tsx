@@ -75,16 +75,6 @@ const TXN_TYPES: {
     hint: 'Mark a payment you made',
   },
   {
-    key: 'credit',
-    label: 'Credit',
-    icon: CreditCard,
-    color: '#5c3d8f',
-    bg: '#f2ecfb',
-    border: '#d9c8f0',
-    dir: 'in',
-    hint: 'Credit given — udhaar / khata',
-  },
-  {
     key: 'invoice',
     label: 'Invoice',
     icon: FileText,
@@ -184,6 +174,31 @@ function PayMethodToggle({
         )
       })}
     </div>
+  )
+}
+
+function CreditToggle({
+  isCredit,
+  onChange,
+}: {
+  isCredit: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`credit-toggle${isCredit ? ' active' : ''}`}
+      role="switch"
+      aria-checked={isCredit}
+      onClick={() => onChange(!isCredit)}
+    >
+      <span className="credit-toggle-icon"><CreditCard size={14} /></span>
+      <span>
+        <strong>Credit / Udhar</strong>
+        <small>{isCredit ? 'Record as credit' : 'Record as paid'}</small>
+      </span>
+      <span className="credit-toggle-track"><span /></span>
+    </button>
   )
 }
 
@@ -343,6 +358,7 @@ export function QuickAdd({
     payMethod, setPayMethod,
     amountStr, setAmountStr,
     note, setNote,
+    isCredit, setIsCredit,
     saving, error, save,
     parties,
     selectedParty, selectParty,
@@ -435,6 +451,7 @@ export function QuickAdd({
                     onChange={e => setNote(e.target.value)}
                   />
                 </label>
+                <CreditToggle isCredit={isCredit} onChange={setIsCredit} />
               </div>
             )}
 
