@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   MoreHorizontal,
-  Pencil,
   Settings,
   Sparkles,
   Store,
@@ -22,7 +21,6 @@ import { resetDemoStore } from '@/lib/demo'
 import { avatarColor, initials } from '@/lib/format'
 import type { Business } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
-import { EditStoreModal } from '@/components/modals/EditStoreModal'
 
 export type NavKey = 'Pulse' | 'Khata' | 'Stock' | 'Invoices' | 'Reports' | 'Settings'
 
@@ -34,7 +32,6 @@ export function Sidebar({
   collapsed = false,
   setCollapsed,
   business,
-  onBusinessUpdate,
   navItems,
   onOpenShortcuts,
 }: {
@@ -45,7 +42,6 @@ export function Sidebar({
   collapsed?: boolean
   setCollapsed?: (value: boolean | ((prev: boolean) => boolean)) => void
   business: Business | null
-  onBusinessUpdate?: (b: Business) => void
   navItems: { label: NavKey; icon: LucideIcon }[]
   onOpenShortcuts?: () => void
 }) {
@@ -56,7 +52,6 @@ export function Sidebar({
 
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [branchMenuOpen, setBranchMenuOpen] = useState(false)
-  const [showEditStore, setShowEditStore] = useState(false)
 
   const profileRef = useRef<HTMLDivElement>(null)
   const branchRef = useRef<HTMLDivElement>(null)
@@ -148,25 +143,10 @@ export function Sidebar({
           {/* Branch Menu Popover */}
           {branchMenuOpen && (
             <div className="popover-menu branch-popover">
-              <div className="popover-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <span className="popover-eyebrow">Active Register</span>
-                  <strong>{displayName}</strong>
-                  <small>{business?.currency ?? 'NPR'} · Main Store</small>
-                </div>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => {
-                    setBranchMenuOpen(false)
-                    setShowEditStore(true)
-                  }}
-                  title="Edit store name"
-                  aria-label="Edit store name"
-                  style={{ color: '#9bb2a2', padding: 4, borderRadius: '4px' }}
-                >
-                  <Pencil size={13} />
-                </button>
+              <div className="popover-header">
+                <span className="popover-eyebrow">Active Register</span>
+                <strong>{displayName}</strong>
+                <small>{business?.currency ?? 'NPR'} · Main Store</small>
               </div>
               <div className="popover-divider" />
               <div className="popover-item active">
@@ -178,16 +158,6 @@ export function Sidebar({
                 <Check size={14} style={{ color: '#bdc85a' }} />
               </div>
               <div className="popover-divider" />
-              <button
-                className="popover-action"
-                onClick={() => {
-                  setBranchMenuOpen(false)
-                  setShowEditStore(true)
-                }}
-              >
-                <Pencil size={15} />
-                <span>Edit Store Name</span>
-              </button>
               <button
                 className="popover-action"
                 onClick={() => {
@@ -299,16 +269,6 @@ export function Sidebar({
               )}
               <button
                 className="popover-action"
-                onClick={() => {
-                  setProfileMenuOpen(false)
-                  setShowEditStore(true)
-                }}
-              >
-                <Store size={15} />
-                <span>Edit Store Name</span>
-              </button>
-              <button
-                className="popover-action"
                 onClick={() => handleSelectNav('Settings')}
               >
                 <Settings size={15} />
@@ -360,17 +320,6 @@ export function Sidebar({
           )}
         </div>
       </aside>
-
-      {showEditStore && (
-        <EditStoreModal
-          close={() => setShowEditStore(false)}
-          business={business}
-          onSaved={(updated) => {
-            onBusinessUpdate?.(updated)
-            setShowEditStore(false)
-          }}
-        />
-      )}
     </>
   )
 }
