@@ -83,6 +83,7 @@ export default function Page() {
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
         business={business}
+        onBusinessUpdate={setBusiness}
         navItems={navItems}
         onOpenShortcuts={() => setShowShortcuts(true)}
       />

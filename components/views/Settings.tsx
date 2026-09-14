@@ -29,7 +29,7 @@ export function Settings({ business, onBusinessUpdate }: { business: Business | 
           <span className="eyebrow">Business profile</span>
           <h3>Tell us about your shop</h3>
           <div className="settings-form">
-            <label>Business name<input value={name} onChange={e => setName(e.target.value)} /></label>
+            <label>Store / Business name<input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Shree Ganesh Kirana Store" /></label>
             <label>Email<input value={user?.email ?? ''} disabled style={{ opacity: 0.6 }} /></label>
             <label>Currency
               <select value={currency} onChange={e => setCurrency(e.target.value)}>
