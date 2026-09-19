@@ -15,3 +15,5 @@ export const createClient = () => {
   }
   return client
 }
+
+export type TypedSupabaseClient = ReturnType<typeof createClient>

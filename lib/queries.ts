@@ -32,7 +32,8 @@ export async function getBusiness(userId?: string) {
       .maybeSingle()
 
     if (error) {
-      console.error('getBusiness error:', error)
+      // Supabase error logged in development only
+      if (process.env.NODE_ENV === 'development') console.error('getBusiness error:', error)
       return getDemoStore().business
     }
     return data as unknown as Business || getDemoStore().business
@@ -66,8 +67,8 @@ export async function updateBusiness(updates: { name?: string; currency?: string
     return
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('businesses') as any)
+  const { error } = await supabase
+    .from('businesses')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', user.id)
   if (error) throw error
@@ -379,10 +380,9 @@ export async function addTransaction(
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('transactions') as any)
+  const { data, error } = await supabase
+    .from('transactions')
     .insert({
-      id,
       business_id: userId,
       direction: txn.direction,
       amount_minor: txn.amountMinor,
@@ -395,8 +395,6 @@ export async function addTransaction(
       is_adjustment: false,
       is_write_off: false,
       occurred_at: txn.occurredAt || now,
-      created_at: now,
-      updated_at: now,
       deleted_at: null,
     })
     .select()
@@ -485,18 +483,15 @@ export async function addParty(entry: {
     return addParty({ ...entry }) // will route to demo mode if unauthenticated
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('parties') as any)
+  const { data, error } = await supabase
+    .from('parties')
     .insert({
-      id: partyId,
       business_id: user.id,
       name: entry.name.trim(),
       phone: entry.phone?.trim() || null,
       balance_minor: entry.balance_minor ?? 0,
       remind_enabled: false,
       remind_every_days: 14,
-      created_at: now,
-      updated_at: now,
     })
     .select()
     .single()
@@ -559,10 +554,9 @@ export async function addInventoryItem(entry: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('inventory_items') as any)
+  const { data, error } = await supabase
+    .from('inventory_items')
     .insert({
-      id: itemId,
       business_id: user.id,
       name: entry.name.trim(),
       sku: entry.sku?.trim() || null,
@@ -571,8 +565,6 @@ export async function addInventoryItem(entry: {
       low_stock_threshold: entry.low_stock_threshold,
       cost_price_minor: entry.cost_price_minor,
       sale_price_minor: entry.sale_price_minor,
-      created_at: now,
-      updated_at: now,
       deleted_at: null,
     })
     .select()
@@ -701,16 +693,16 @@ export async function addKhataTransaction(
   }
 
   // 3. Fetch current party balance and apply delta
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: party, error: partyErr } = await (supabase.from('parties') as any)
+  const { data: party, error: partyErr } = await supabase
+    .from('parties')
     .select('balance_minor')
     .eq('id', params.partyId)
     .single()
 
   if (!partyErr && party) {
     const newBalance = (party.balance_minor || 0) + delta
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('parties') as any)
+    await supabase
+      .from('parties')
       .update({
         balance_minor: newBalance,
         updated_at: new Date().toISOString(),
@@ -727,8 +719,8 @@ export async function softDeleteRecord(
   if (isDemoMode()) return
 
   const supabase = createClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from(table) as any)
+  const { error } = await supabase
+    .from(table)
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
 

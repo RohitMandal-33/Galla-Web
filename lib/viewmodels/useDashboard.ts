@@ -19,7 +19,7 @@ export function useDashboardViewModel(currency: string) {
       setTransactions(t)
       setChartData(c)
     } catch (e) {
-      console.error(e)
+      if (process.env.NODE_ENV === 'development') console.error(e)
     } finally {
       setLoading(false)
     }

@@ -9,6 +9,7 @@ export interface Business {
   tax_rate_pct: number
   created_at: string
   updated_at: string
+  [key: string]: unknown
 }
 
 export interface Party {
@@ -23,6 +24,7 @@ export interface Party {
   settled_at: string | null
   created_at: string
   updated_at: string
+  [key: string]: unknown
 }
 
 export interface InventoryItem {
@@ -38,6 +40,7 @@ export interface InventoryItem {
   created_at: string
   updated_at: string
   deleted_at: string | null
+  [key: string]: unknown
 }
 
 export interface Transaction {
@@ -60,6 +63,7 @@ export interface Transaction {
   deleted_at: string | null
   // joined
   parties?: { name: string } | null
+  [key: string]: unknown
 }
 
 export interface Invoice {
@@ -81,6 +85,7 @@ export interface Invoice {
   deleted_at: string | null
   // joined
   parties?: { name: string } | null
+  [key: string]: unknown
 }
 
 export interface InvoiceItem {
@@ -91,6 +96,7 @@ export interface InvoiceItem {
   quantity: number
   unit_price_minor: number
   total_minor: number
+  [key: string]: unknown
 }
 
 export interface Reconciliation {
@@ -102,6 +108,7 @@ export interface Reconciliation {
   discrepancy_minor: number
   note: string | null
   created_at: string
+  [key: string]: unknown
 }
 
 // Supabase Database type for createBrowserClient generic

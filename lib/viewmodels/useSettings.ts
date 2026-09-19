@@ -29,7 +29,7 @@ export function useSettingsViewModel(
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
-      console.error(e)
+      if (process.env.NODE_ENV === 'development') console.error(e)
     } finally {
       setSaving(false)
     }

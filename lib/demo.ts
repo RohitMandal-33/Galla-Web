@@ -22,7 +22,7 @@ export function isDemoMode(): boolean {
 
 export function enableDemoMode(): void {
   if (typeof window === 'undefined') return
-  document.cookie = `${DEMO_COOKIE_NAME}=true; path=/; max-age=604800; SameSite=Lax`
+  document.cookie = `${DEMO_COOKIE_NAME}=true; path=/; max-age=604800; SameSite=Strict; Secure`
   localStorage.setItem(DEMO_COOKIE_NAME, 'true')
   // Ensure mock data is initialized
   getDemoStore()
@@ -30,7 +30,7 @@ export function enableDemoMode(): void {
 
 export function disableDemoMode(): void {
   if (typeof window === 'undefined') return
-  document.cookie = `${DEMO_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`
+  document.cookie = `${DEMO_COOKIE_NAME}=; path=/; max-age=0; SameSite=Strict; Secure`
   localStorage.removeItem(DEMO_COOKIE_NAME)
   localStorage.removeItem('galla_demo_store_v1')
 }
