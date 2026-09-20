@@ -70,6 +70,7 @@ export function Topbar({
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search transactions, parties, items" />
         <kbd>⌘ K</kbd>
       </div>
+
       <div className="top-actions">
         <div className="notification-anchor" ref={notificationRef}>
           <button

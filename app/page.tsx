@@ -17,6 +17,7 @@ import { QuickAdd } from '@/components/views/QuickAdd'
 import { ShortcutsModal } from '@/components/modals/ShortcutsModal'
 import { ReconciliationModal } from '@/components/modals/ReconciliationModal'
 import { RealtimeSync } from '@/components/realtime-sync'
+import { useNavigationStack } from '@/lib/useNavigationStack'
 
 const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
   { label: 'Pulse', icon: LayoutDashboard },
@@ -29,7 +30,8 @@ const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
 export default function Page() {
   const { user, loading: authLoading } = useSupabase()
   const { business, setBusiness } = useBusinessViewModel(user)
-  const [active, setActive] = useState<NavKey>('Pulse')
+  const { active, push, navDirection } = useNavigationStack('Pulse')
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
@@ -71,7 +73,7 @@ export default function Page() {
             key={refreshKey}
             onAdd={() => setShowQuickAdd(true)}
             onReconcile={() => setShowReconcile(true)}
-            onNavigate={k => setActive(k as NavKey)}
+            onNavigate={k => push(k as NavKey)}
             business={business}
           />
         )
@@ -88,7 +90,7 @@ export default function Page() {
       <RealtimeSync userId={user?.id} />
       <Sidebar
         active={active}
-        setActive={setActive}
+        setActive={push}
         open={menuOpen}
         setOpen={setMenuOpen}
         collapsed={sidebarCollapsed}
@@ -106,7 +108,11 @@ export default function Page() {
           collapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
         />
-        <main>{page}</main>
+        <main>
+          <div key={active} className={`main-view-container anim-${navDirection}`}>
+            {page}
+          </div>
+        </main>
       </div>
 
       {showQuickAdd && (
@@ -114,7 +120,7 @@ export default function Page() {
           close={() => setShowQuickAdd(false)}
           onSaved={() => setRefreshKey(k => k + 1)}
           currency={business?.currency ?? 'NPR'}
-          onNavigate={(key) => { setShowQuickAdd(false); setActive(key) }}
+          onNavigate={(key) => { setShowQuickAdd(false); push(key) }}
         />
       )}
 
