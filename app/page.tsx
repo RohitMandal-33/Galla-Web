@@ -15,6 +15,7 @@ import { Reports } from '@/components/views/Reports'
 import { Settings } from '@/components/views/Settings'
 import { QuickAdd } from '@/components/views/QuickAdd'
 import { ShortcutsModal } from '@/components/modals/ShortcutsModal'
+import { ReconciliationModal } from '@/components/modals/ReconciliationModal'
 import { RealtimeSync } from '@/components/realtime-sync'
 
 const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
@@ -32,6 +33,7 @@ export default function Page() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [showReconcile, setShowReconcile] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [query, setQuery] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -63,11 +65,20 @@ export default function Page() {
 
   const page = (() => {
     switch (active) {
-      case 'Pulse': return <Dashboard key={refreshKey} onAdd={() => setShowQuickAdd(true)} business={business} />
+      case 'Pulse':
+        return (
+          <Dashboard
+            key={refreshKey}
+            onAdd={() => setShowQuickAdd(true)}
+            onReconcile={() => setShowReconcile(true)}
+            onNavigate={k => setActive(k as NavKey)}
+            business={business}
+          />
+        )
       case 'Khata': return <Khata business={business} />
       case 'Stock': return <Stock business={business} />
       case 'Invoices': return <Invoices business={business} />
-      case 'Reports': return <Reports />
+      case 'Reports': return <Reports business={business} />
       case 'Settings': return <Settings business={business} onBusinessUpdate={setBusiness} />
     }
   })()
@@ -109,6 +120,14 @@ export default function Page() {
 
       {showShortcuts && (
         <ShortcutsModal close={() => setShowShortcuts(false)} />
+      )}
+
+      {showReconcile && (
+        <ReconciliationModal
+          currency={business?.currency ?? 'NPR'}
+          onClose={() => setShowReconcile(false)}
+          onSuccess={() => setRefreshKey(k => k + 1)}
+        />
       )}
     </div>
   )

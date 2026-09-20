@@ -1,5 +1,5 @@
 import { createClient } from './supabase'
-import type { Business, InventoryItem, Invoice, Party, Transaction } from './types'
+import type { Branch, Business, InventoryItem, Invoice, InvoiceItem, Party, Reconciliation, StaffMember, Transaction } from './types'
 import { getDemoStore, isDemoMode, saveDemoStore } from './demo'
 
 const PAISA = 100 // minor units (paisa) per rupee
@@ -45,8 +45,17 @@ export async function getBusiness(userId?: string) {
   }
 }
 
-/** Update business profile */
-export async function updateBusiness(updates: { name?: string; currency?: string; tax_rate_pct?: number }) {
+/** Update business profile — syncs all fields that mobile also syncs */
+export async function updateBusiness(updates: {
+  name?: string
+  currency?: string
+  tax_rate_pct?: number
+  locale?: string
+  low_cash_threshold_minor?: number
+  notify_payment_due?: boolean
+  notify_low_cash?: boolean
+  notify_low_stock?: boolean
+}) {
   if (isDemoMode()) {
     const store = getDemoStore()
     store.business = {
@@ -807,5 +816,388 @@ export async function getChartData(): Promise<ChartData> {
   } catch {
     const txns = getDemoStore().transactions.filter(t => !t.deleted_at)
     return buildChartData(txns)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// BRANCHES
+// ─────────────────────────────────────────────────────────────
+
+export async function getBranches(): Promise<Branch[]> {
+  if (isDemoMode()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('branches').select('*').is('deleted_at', null).order('name')
+    if (error) throw error
+    return (data ?? []) as unknown as Branch[]
+  } catch { return [] }
+}
+
+export async function createBranch(entry: { name: string; address?: string | null; phone?: string | null }): Promise<Branch> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const now = new Date().toISOString()
+  const { data, error } = await supabase.from('branches').insert({
+    id: crypto.randomUUID(), business_id: user.id,
+    name: entry.name.trim(), address: entry.address ?? null, phone: entry.phone ?? null,
+    is_default: false, created_at: now, updated_at: now,
+  }).select().single()
+  if (error) throw error
+  return data as unknown as Branch
+}
+
+// ─────────────────────────────────────────────────────────────
+// STAFF
+// ─────────────────────────────────────────────────────────────
+
+export async function getStaffMembers(): Promise<StaffMember[]> {
+  if (isDemoMode()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('staff_members').select('*').is('deleted_at', null).order('name')
+    if (error) throw error
+    return (data ?? []) as unknown as StaffMember[]
+  } catch { return [] }
+}
+
+export async function createStaffMember(entry: { name: string; phone?: string | null; role?: 'owner' | 'manager' | 'staff' }): Promise<StaffMember> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const now = new Date().toISOString()
+  const { data, error } = await supabase.from('staff_members').insert({
+    id: crypto.randomUUID(), business_id: user.id,
+    name: entry.name.trim(), phone: entry.phone ?? null,
+    role: entry.role ?? 'staff', is_active: true, created_at: now, updated_at: now,
+  }).select().single()
+  if (error) throw error
+  return data as unknown as StaffMember
+}
+
+// ─────────────────────────────────────────────────────────────
+// INVOICE LINE ITEMS
+// ─────────────────────────────────────────────────────────────
+
+export async function getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
+  if (isDemoMode()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('invoice_items').select('*').eq('invoice_id', invoiceId)
+    if (error) throw error
+    return (data ?? []) as unknown as InvoiceItem[]
+  } catch { return [] }
+}
+
+export interface InvoiceLineInput {
+  description: string
+  quantity: number
+  unit_price_minor: number
+  inventory_item_id?: string | null
+}
+
+/**
+ * Create an invoice with line items.
+ * Subtotal = sum(qty * unit_price_minor). Tax = round(subtotal * taxRatePct / 100). Total = subtotal + tax.
+ * If isPaidNow, also inserts a linked money_in transaction.
+ */
+export async function createInvoice(params: {
+  partyId?: string | null
+  partyName?: string | null
+  issueDate: string
+  dueDate?: string | null
+  taxRatePct: number
+  notes?: string | null
+  lines: InvoiceLineInput[]
+  invoiceNumber?: string
+  isPaidNow?: boolean
+}): Promise<Invoice> {
+  const subtotal = params.lines.reduce((s, l) => s + Math.round(l.quantity * l.unit_price_minor), 0)
+  const tax = Math.round(subtotal * params.taxRatePct / 100)
+  const total = subtotal + tax
+  const invoiceNumber = params.invoiceNumber ?? `INV-${Date.now().toString().slice(-4)}`
+
+  if (isDemoMode()) {
+    const store = getDemoStore()
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const inv: Invoice = {
+      id, business_id: 'demo-user-id',
+      party_id: params.partyId ?? null, party_name: params.partyName ?? null,
+      invoice_number: invoiceNumber,
+      issue_date: params.issueDate, due_date: params.dueDate ?? null,
+      subtotal_minor: subtotal, tax_rate_pct: params.taxRatePct,
+      tax_minor: tax, total_minor: total,
+      paid_amount_minor: params.isPaidNow ? total : 0,
+      status: params.isPaidNow ? 'paid' : 'unpaid',
+      notes: params.notes ?? null, branch_id: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    }
+    store.invoices.unshift(inv)
+    saveDemoStore(store)
+    return inv
+  }
+
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const invoiceId = crypto.randomUUID()
+  const now = new Date().toISOString()
+  const status: Invoice['status'] = params.isPaidNow ? 'paid' : 'unpaid'
+
+  const { data: inv, error: invErr } = await supabase.from('invoices').insert({
+    id: invoiceId, business_id: user.id,
+    party_id: params.partyId ?? null, party_name: params.partyName ?? null,
+    invoice_number: invoiceNumber,
+    issue_date: params.issueDate, due_date: params.dueDate ?? null,
+    subtotal_minor: subtotal, tax_rate_pct: params.taxRatePct,
+    tax_minor: tax, total_minor: total,
+    paid_amount_minor: params.isPaidNow ? total : 0,
+    status, notes: params.notes ?? null, branch_id: null,
+    created_at: now, updated_at: now, deleted_at: null,
+  }).select().single()
+  if (invErr) throw invErr
+
+  if (params.lines.length > 0) {
+    const lineRows = params.lines.map(l => ({
+      id: crypto.randomUUID(), invoice_id: invoiceId,
+      inventory_item_id: l.inventory_item_id ?? null,
+      description: l.description.trim(), quantity: l.quantity,
+      unit_price_minor: l.unit_price_minor,
+      total_minor: Math.round(l.quantity * l.unit_price_minor),
+    }))
+    const { error: lineErr } = await supabase.from('invoice_items').insert(lineRows)
+    if (lineErr) throw lineErr
+  }
+
+  if (params.isPaidNow && total > 0) {
+    await supabase.from('transactions').insert({
+      id: crypto.randomUUID(), business_id: user.id,
+      party_id: params.partyId ?? null, invoice_id: invoiceId,
+      direction: 'money_in', amount_minor: total,
+      category: 'Invoice Payment', note: `Payment for ${invoiceNumber}`,
+      is_credit: false, is_adjustment: false, is_write_off: false,
+      occurred_at: now, created_at: now, updated_at: now, deleted_at: null,
+    })
+  }
+
+  return inv as unknown as Invoice
+}
+
+export async function updateInvoiceStatus(
+  invoiceId: string, status: Invoice['status'], paidAmountMinor: number
+): Promise<void> {
+  if (isDemoMode()) {
+    const store = getDemoStore()
+    const inv = store.invoices.find(i => i.id === invoiceId)
+    if (inv) { inv.status = status; inv.paid_amount_minor = paidAmountMinor; inv.updated_at = new Date().toISOString() }
+    saveDemoStore(store)
+    return
+  }
+  const supabase = createClient()
+  const { error } = await supabase.from('invoices').update({
+    status, paid_amount_minor: paidAmountMinor, updated_at: new Date().toISOString()
+  }).eq('id', invoiceId)
+  if (error) throw error
+}
+
+// ─────────────────────────────────────────────────────────────
+// RECONCILIATIONS
+// ─────────────────────────────────────────────────────────────
+
+export async function getReconciliations(): Promise<Reconciliation[]> {
+  if (isDemoMode()) return []
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('reconciliations').select('*').order('occurred_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as unknown as Reconciliation[]
+  } catch { return [] }
+}
+
+export async function createReconciliation(params: {
+  countedCashMinor: number
+  bankBalanceMinor?: number | null
+  expectedCashMinor: number
+  note?: string | null
+  occurredAt?: string
+}): Promise<Reconciliation> {
+  const now = params.occurredAt ?? new Date().toISOString()
+  const discrepancy = params.countedCashMinor - params.expectedCashMinor
+
+  if (isDemoMode()) {
+    const store = getDemoStore()
+    const id = crypto.randomUUID()
+    const rec: Reconciliation = {
+      id,
+      business_id: 'demo-user-id',
+      occurred_at: now,
+      counted_cash_minor: params.countedCashMinor,
+      bank_balance_minor: params.bankBalanceMinor ?? null,
+      expected_cash_minor: params.expectedCashMinor,
+      discrepancy_minor: discrepancy,
+      note: params.note ?? null,
+      adjustment_txn_id: null,
+      branch_id: null,
+      created_at: now,
+      updated_at: now,
+    }
+    if (discrepancy !== 0) {
+      const txnId = crypto.randomUUID()
+      rec.adjustment_txn_id = txnId
+      store.transactions.unshift({
+        id: txnId,
+        business_id: 'demo-user-id',
+        party_id: null,
+        inventory_item_id: null,
+        direction: discrepancy > 0 ? 'money_in' : 'money_out',
+        amount_minor: Math.abs(discrepancy),
+        category: 'Cash Adjustment',
+        note: `Reconciliation adjustment${params.note ? ': ' + params.note : ''}`,
+        is_credit: false,
+        is_adjustment: true,
+        is_write_off: false,
+        photo_url: null,
+        invoice_id: null,
+        occurred_at: now,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+      })
+    }
+    saveDemoStore(store)
+    return rec
+  }
+
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const id = crypto.randomUUID()
+
+  const { data: rec, error: recErr } = await supabase.from('reconciliations').insert({
+    id, business_id: user.id, occurred_at: now,
+    counted_cash_minor: params.countedCashMinor,
+    bank_balance_minor: params.bankBalanceMinor ?? null,
+    expected_cash_minor: params.expectedCashMinor,
+    discrepancy_minor: discrepancy,
+    note: params.note ?? null, adjustment_txn_id: null, branch_id: null,
+    created_at: now, updated_at: now,
+  }).select().single()
+  if (recErr) throw recErr
+
+  if (discrepancy !== 0) {
+    const txnId = crypto.randomUUID()
+    const { error: txnErr } = await supabase.from('transactions').insert({
+      id: txnId, business_id: user.id,
+      direction: discrepancy > 0 ? 'money_in' : 'money_out',
+      amount_minor: Math.abs(discrepancy),
+      category: 'Cash Adjustment',
+      note: `Reconciliation adjustment${params.note ? ': ' + params.note : ''}`,
+      is_credit: false, is_adjustment: true, is_write_off: false,
+      occurred_at: now, created_at: now, updated_at: now, deleted_at: null,
+    })
+    if (!txnErr) {
+      await supabase.from('reconciliations').update({ adjustment_txn_id: txnId }).eq('id', id)
+    }
+  }
+  return rec as unknown as Reconciliation
+}
+
+// ─────────────────────────────────────────────────────────────
+// REPORTS  (P&L — mirrors mobile SimpleReport / BusinessHealthReport)
+// ─────────────────────────────────────────────────────────────
+
+export interface ReportData {
+  moneyInMinor: number
+  moneyOutMinor: number
+  cashInMinor: number
+  cashOutMinor: number
+  udhaarGivenMinor: number
+  udhaarCollectedMinor: number
+  taxMinor: number
+  netMinor: number
+  topCategories: { name: string; total: number }[]
+  outstandingReceivableMinor: number
+  outstandingPayableMinor: number
+  invoicedTotalMinor: number
+  invoicePaidMinor: number
+}
+
+export async function getReportData(start: Date, end: Date): Promise<ReportData> {
+  const empty: ReportData = {
+    moneyInMinor: 0, moneyOutMinor: 0, cashInMinor: 0, cashOutMinor: 0,
+    udhaarGivenMinor: 0, udhaarCollectedMinor: 0, taxMinor: 0, netMinor: 0,
+    topCategories: [], outstandingReceivableMinor: 0, outstandingPayableMinor: 0,
+    invoicedTotalMinor: 0, invoicePaidMinor: 0,
+  }
+  if (isDemoMode()) {
+    const { transactions, parties, invoices, business } = getDemoStore()
+    return _computeReport(
+      transactions as unknown as Transaction[],
+      parties as unknown as Party[],
+      invoices as unknown as Invoice[],
+      business?.tax_rate_pct ?? 0
+    )
+  }
+  try {
+    const supabase = createClient()
+    const [txnRes, partyRes, invRes, bizRes] = await Promise.all([
+      supabase.from('transactions')
+        .select('direction, amount_minor, category, is_credit, is_adjustment')
+        .is('deleted_at', null)
+        .gte('occurred_at', start.toISOString())
+        .lte('occurred_at', end.toISOString()),
+      supabase.from('parties').select('balance_minor').is('settled_at', null),
+      supabase.from('invoices').select('total_minor, paid_amount_minor').is('deleted_at', null),
+      supabase.from('businesses').select('tax_rate_pct').maybeSingle(),
+    ])
+    return _computeReport(
+      (txnRes.data ?? []) as unknown as Transaction[],
+      (partyRes.data ?? []) as unknown as Party[],
+      (invRes.data ?? []) as unknown as Invoice[],
+      ((bizRes.data as { tax_rate_pct: number } | null)?.tax_rate_pct ?? 0)
+    )
+  } catch { return empty }
+}
+
+function _computeReport(
+  txns: Transaction[], parties: Party[], invoices: Invoice[], taxRatePct: number
+): ReportData {
+  let moneyInMinor = 0, moneyOutMinor = 0, cashInMinor = 0, cashOutMinor = 0
+  let udhaarGivenMinor = 0, udhaarCollectedMinor = 0
+  const catMap: Record<string, number> = {}
+
+  for (const t of txns) {
+    const amt = t.amount_minor ?? 0
+    if (t.direction === 'money_in') {
+      moneyInMinor += amt
+      if (!t.is_credit) cashInMinor += amt
+      if (t.is_credit) udhaarCollectedMinor += amt
+    } else {
+      moneyOutMinor += amt
+      if (!t.is_credit) cashOutMinor += amt
+      if (t.is_credit) udhaarGivenMinor += amt
+    }
+    if (t.direction === 'money_out' && !t.is_adjustment) {
+      const cat = t.category ?? 'Other'
+      catMap[cat] = (catMap[cat] ?? 0) + amt
+    }
+  }
+
+  return {
+    moneyInMinor, moneyOutMinor, cashInMinor, cashOutMinor,
+    udhaarGivenMinor, udhaarCollectedMinor,
+    taxMinor: Math.round(moneyInMinor * taxRatePct / 100),
+    netMinor: moneyInMinor - moneyOutMinor,
+    topCategories: Object.entries(catMap).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total).slice(0, 5),
+    outstandingReceivableMinor: parties.filter(p => (p.balance_minor ?? 0) > 0).reduce((s, p) => s + p.balance_minor, 0),
+    outstandingPayableMinor: parties.filter(p => (p.balance_minor ?? 0) < 0).reduce((s, p) => s + Math.abs(p.balance_minor), 0),
+    invoicedTotalMinor: invoices.reduce((s, i) => s + (i.total_minor ?? 0), 0),
+    invoicePaidMinor: invoices.reduce((s, i) => s + (i.paid_amount_minor ?? 0), 0),
   }
 }

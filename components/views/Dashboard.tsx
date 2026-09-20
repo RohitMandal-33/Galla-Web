@@ -255,7 +255,17 @@ function ActivityTable({ transactions, currency }: { transactions: Transaction[]
   )
 }
 
-export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Business | null }) {
+export function Dashboard({
+  onAdd,
+  onReconcile,
+  onNavigate,
+  business,
+}: {
+  onAdd: () => void
+  onReconcile?: () => void
+  onNavigate?: (key: string) => void
+  business: Business | null
+}) {
   const currency = business?.currency ?? 'NPR'
   const { kpis, transactions, chartData, loading } = useDashboardViewModel(currency)
 
@@ -267,6 +277,9 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
     return 'Good evening'
   })()
 
+  const lowCashThreshold = business?.low_cash_threshold_minor ?? 500000
+  const isLowCash = (kpis?.cashInHand ?? 0) < lowCashThreshold && business?.notify_low_cash !== false
+
   return (
     <div className="page-content">
       <div className="page-title-row">
@@ -276,10 +289,89 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
           <p className="page-subtitle">Here is what is happening in your business today.</p>
         </div>
         <div className="title-actions">
-          <button className="secondary-button"><Activity size={16} /> Reconcile</button>
+          <button className="secondary-button" onClick={onReconcile}><Activity size={16} /> Reconcile</button>
           <button className="primary-button" onClick={onAdd}><Plus size={17} /> Add transaction</button>
         </div>
       </div>
+
+      {/* Action Center - Mirrors Mobile Action Center Provider */}
+      {((kpis?.activeDebtors ?? 0) > 0 || isLowCash) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+          {(kpis?.activeDebtors ?? 0) > 0 && (
+            <div style={{
+              flex: 1,
+              minWidth: '280px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: '#fff8ec',
+              border: '1px solid #f6dfad',
+              borderRadius: '8px',
+              fontSize: '13px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>
+                  <strong>{kpis?.activeDebtors} customers</strong> have unpaid credit ({minorToDisplay(kpis?.udhaar ?? 0, currency)})
+                </span>
+              </div>
+              <button
+                onClick={() => onNavigate?.('Khata')}
+                style={{
+                  background: '#b08b30',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                View Khata
+              </button>
+            </div>
+          )}
+
+          {isLowCash && (
+            <div style={{
+              flex: 1,
+              minWidth: '280px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              fontSize: '13px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>🚨</span>
+                <span>
+                  Cash in drawer is low (<strong>{minorToDisplay(kpis?.cashInHand ?? 0, currency)}</strong>)
+                </span>
+              </div>
+              <button
+                onClick={onReconcile}
+                style={{
+                  background: '#b91c1c',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Count Drawer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? <Spinner /> : (
         <>
@@ -306,7 +398,7 @@ export function Dashboard({ onAdd, business }: { onAdd: () => void; business: Bu
               </div>
               <div className="hero-footer">
                 <span>Based on all recorded transactions</span>
-                <button className="hero-action">Count till <ChevronRight size={14} /></button>
+                <button className="hero-action" onClick={onReconcile}>Count till <ChevronRight size={14} /></button>
               </div>
             </div>
 

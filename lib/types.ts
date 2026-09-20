@@ -1,5 +1,6 @@
 export type TxnDirection = 'money_in' | 'money_out'
 export type InvoiceStatus = 'unpaid' | 'partially_paid' | 'paid' | 'cancelled'
+export type StaffRole = 'owner' | 'manager' | 'staff'
 
 export interface Business {
   id: string
@@ -7,6 +8,11 @@ export interface Business {
   name: string
   currency: string
   tax_rate_pct: number
+  locale?: string
+  low_cash_threshold_minor?: number
+  notify_payment_due?: boolean
+  notify_low_cash?: boolean
+  notify_low_stock?: boolean
   created_at: string
   updated_at: string
   [key: string]: unknown
@@ -27,6 +33,32 @@ export interface Party {
   [key: string]: unknown
 }
 
+export interface Branch {
+  id: string
+  business_id: string
+  name: string
+  address: string | null
+  phone: string | null
+  is_default: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  [key: string]: unknown
+}
+
+export interface StaffMember {
+  id: string
+  business_id: string
+  name: string
+  phone: string | null
+  role: StaffRole
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  [key: string]: unknown
+}
+
 export interface InventoryItem {
   id: string
   business_id: string
@@ -37,6 +69,7 @@ export interface InventoryItem {
   low_stock_threshold: number
   cost_price_minor: number
   sale_price_minor: number
+  branch_id?: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -57,6 +90,11 @@ export interface Transaction {
   is_write_off: boolean
   photo_url: string | null
   invoice_id: string | null
+  branch_id?: string | null
+  staff_id?: string | null
+  staff_name?: string | null
+  nl_raw?: string | null
+  ai_inferred?: boolean
   occurred_at: string
   created_at: string
   updated_at: string
@@ -70,6 +108,7 @@ export interface Invoice {
   id: string
   business_id: string
   party_id: string | null
+  party_name?: string | null
   invoice_number: string
   issue_date: string
   due_date: string | null
@@ -80,6 +119,7 @@ export interface Invoice {
   paid_amount_minor: number
   status: InvoiceStatus
   notes: string | null
+  branch_id?: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -104,10 +144,14 @@ export interface Reconciliation {
   business_id: string
   occurred_at: string
   counted_cash_minor: number
+  bank_balance_minor: number | null
   expected_cash_minor: number
   discrepancy_minor: number
   note: string | null
+  adjustment_txn_id: string | null
+  branch_id: string | null
   created_at: string
+  updated_at: string
   [key: string]: unknown
 }
 
@@ -125,6 +169,18 @@ export type Database = {
         Row: Party
         Insert: Omit<Party, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Party>
+        Relationships: []
+      }
+      branches: {
+        Row: Branch
+        Insert: Omit<Branch, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Branch>
+        Relationships: []
+      }
+      staff_members: {
+        Row: StaffMember
+        Insert: Omit<StaffMember, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<StaffMember>
         Relationships: []
       }
       inventory_items: {
@@ -153,7 +209,7 @@ export type Database = {
       }
       reconciliations: {
         Row: Reconciliation
-        Insert: Omit<Reconciliation, 'id' | 'created_at'>
+        Insert: Omit<Reconciliation, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Reconciliation>
         Relationships: []
       }
@@ -166,4 +222,3 @@ export type Database = {
     }
   }
 }
-

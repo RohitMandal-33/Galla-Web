@@ -37,10 +37,12 @@ export function useDashboardViewModel(currency: string) {
 
     const handleDemoChange = () => { load() }
     window.addEventListener('galla-demo-data-changed', handleDemoChange)
+    window.addEventListener('galla-sync', handleDemoChange)
 
     return () => {
       sub.unsubscribe()
       window.removeEventListener('galla-demo-data-changed', handleDemoChange)
+      window.removeEventListener('galla-sync', handleDemoChange)
     }
   }, [load])
 

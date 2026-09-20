@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, FileText, MoreHorizontal, Plus, Search } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, FileText, MessageCircle, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useKhataViewModel } from '@/lib/viewmodels/useKhata'
 import { minorToDisplay } from '@/lib/queries'
 import { avatarColor, formatShortDate, initials } from '@/lib/format'
@@ -107,6 +107,22 @@ export function Khata({ business }: { business: Business | null }) {
                 <small>{party.balance_minor >= 0 ? 'They owe you' : 'You owe them'}</small>
               </div>
               <div className="statement-actions">
+                {party.balance_minor > 0 && party.phone && (
+                  <button
+                    className="secondary-button"
+                    style={{ background: '#25D366', color: '#fff', borderColor: '#22bf5b' }}
+                    onClick={() => {
+                      const cleanPhone = (party.phone ?? '').replace(/[^0-9]/g, '')
+                      const msg = encodeURIComponent(
+                        `Namaste ${party.name} ji, your outstanding balance at ${business?.name ?? 'Galla Store'} is ${minorToDisplay(party.balance_minor, currency)}. Kindly settle at your earliest convenience. Thank you!`
+                      )
+                      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank')
+                    }}
+                    title="Send WhatsApp payment reminder"
+                  >
+                    <MessageCircle size={15} /> WhatsApp Reminder
+                  </button>
+                )}
                 <button className="amber-button" onClick={() => setTxnMode('udhaar')}>
                   <ArrowUpRight size={15} /> Give udhaar
                 </button>
