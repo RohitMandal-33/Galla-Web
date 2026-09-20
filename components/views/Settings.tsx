@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Store, UserRound } from 'lucide-react'
+import { Bell, Store, UserRound, Pen } from 'lucide-react'
 import { useSupabase } from '@/lib/supabase-provider'
 import { useSettingsViewModel } from '@/lib/viewmodels/useSettings'
 import type { Business } from '@/lib/types'
@@ -29,7 +29,18 @@ export function Settings({ business, onBusinessUpdate }: { business: Business | 
           <span className="eyebrow">Business profile</span>
           <h3>Tell us about your shop</h3>
           <div className="settings-form">
-            <label>Store / Business name<input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Shree Ganesh Kirana Store" /></label>
+            <label>
+              Store / Business name
+              <div style={{ position: 'relative', marginTop: '6px' }}>
+                <input 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  placeholder="e.g. Shree Ganesh Kirana Store" 
+                  style={{ paddingRight: '32px', width: '100%' }}
+                />
+                <Pen size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4, pointerEvents: 'none' }} />
+              </div>
+            </label>
             <label>Email<input value={user?.email ?? ''} disabled style={{ opacity: 0.6 }} /></label>
             <label>Currency
               <select value={currency} onChange={e => setCurrency(e.target.value)}>
