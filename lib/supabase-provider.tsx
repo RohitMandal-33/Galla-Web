@@ -49,9 +49,12 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isDemoMode()) {
         setSession(session)
+        if (event === 'SIGNED_OUT') {
+          window.location.href = '/auth'
+        }
       }
     })
 
@@ -68,6 +71,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     }
     await supabase.auth.signOut()
     setSession(null)
+    window.location.href = '/auth'
   }, [supabase, isDemo])
 
   return (

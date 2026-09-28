@@ -18,6 +18,7 @@ import { ShortcutsModal } from '@/components/modals/ShortcutsModal'
 import { ReconciliationModal } from '@/components/modals/ReconciliationModal'
 import { RealtimeSync } from '@/components/realtime-sync'
 import { useNavigationStack } from '@/lib/useNavigationStack'
+import { useTheme } from '@/lib/theme-provider'
 
 const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
   { label: 'Pulse', icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const navItems: { label: NavKey; icon: typeof LayoutDashboard }[] = [
 
 export default function Page() {
   const { user, loading: authLoading } = useSupabase()
+  const { toggleTheme } = useTheme()
   const { business, setBusiness } = useBusinessViewModel(user)
   const { active, push, navDirection } = useNavigationStack('Pulse')
 
@@ -44,6 +46,7 @@ export default function Page() {
   // N = Quick Add
   // [ = Toggle Sidebar Collapse
   // ? = Open Shortcuts Modal
+  // T = Toggle Theme
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const inInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA'
@@ -55,11 +58,13 @@ export default function Page() {
         setSidebarCollapsed(prev => !prev)
       } else if (e.key === '?') {
         setShowShortcuts(prev => !prev)
+      } else if (e.key === 't' || e.key === 'T') {
+        toggleTheme()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [toggleTheme])
 
   if (authLoading) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Spinner /></div>

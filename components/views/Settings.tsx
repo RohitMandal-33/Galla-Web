@@ -1,12 +1,13 @@
 'use client'
 
-import { Bell, Store, UserRound, Pen, GitBranch, Users, Plus, CheckCircle2, Shield } from 'lucide-react'
+import { Bell, Store, UserRound, Pen, GitBranch, Users, Plus, CheckCircle2, Shield, Moon, Sun, Monitor, Check } from 'lucide-react'
 import { useState } from 'react'
 import { useSupabase } from '@/lib/supabase-provider'
+import { useTheme, type Theme } from '@/lib/theme-provider'
 import { useSettingsViewModel } from '@/lib/viewmodels/useSettings'
 import type { Business } from '@/lib/types'
 
-type SettingsTab = 'profile' | 'notifications' | 'branches' | 'staff' | 'account'
+type SettingsTab = 'profile' | 'appearance' | 'notifications' | 'branches' | 'staff' | 'account'
 
 export function Settings({
   business,
@@ -16,6 +17,7 @@ export function Settings({
   onBusinessUpdate: (b: Business) => void
 }) {
   const { user, signOut } = useSupabase()
+  const { theme, resolvedTheme, setTheme } = useTheme()
   const {
     name, setName,
     currency, setCurrency,
@@ -101,6 +103,12 @@ export function Settings({
             onClick={() => setTab('profile')}
           >
             <Store size={17} /> Business profile
+          </button>
+          <button
+            className={tab === 'appearance' ? 'active' : ''}
+            onClick={() => setTab('appearance')}
+          >
+            <Moon size={17} /> Appearance &amp; theme
           </button>
           <button
             className={tab === 'notifications' ? 'active' : ''}
@@ -194,6 +202,139 @@ export function Settings({
               <span>{saved ? '✓ Saved & synced with mobile!' : 'Changes sync automatically across devices.'}</span>
               <button className="primary-button" onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {tab === 'appearance' && (
+          <div className="card settings-card">
+            <span className="eyebrow">Visual Preferences</span>
+            <h3>Theme &amp; display mode</h3>
+            <p style={{ color: 'inherit', opacity: 0.75, fontSize: '13px', margin: '0 0 24px' }}>
+              Choose your preferred interface theme. You can also press <kbd className="popover-kbd" style={{ verticalAlign: 'middle', margin: '0 2px' }}>T</kbd> anywhere to quickly toggle between dark and light mode.
+            </p>
+
+            <div className="theme-options-grid">
+              {/* Light Mode Card */}
+              <div
+                className={`theme-option-card ${theme === 'light' ? 'selected' : ''}`}
+                onClick={() => setTheme('light')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setTheme('light') }}
+              >
+                <div className="theme-option-header">
+                  <div className="theme-option-icon light-icon">
+                    <Sun size={20} />
+                  </div>
+                  <div className="theme-option-info">
+                    <strong>Light Mode</strong>
+                    <small>Warm ivory &amp; forest green</small>
+                  </div>
+                  {theme === 'light' && (
+                    <span className="theme-check-badge">
+                      <Check size={14} /> Active
+                    </span>
+                  )}
+                </div>
+                <div className="theme-preview-box light-preview">
+                  <div className="preview-top" />
+                  <div className="preview-body">
+                    <div className="preview-sidebar" />
+                    <div className="preview-cards">
+                      <div className="preview-card" />
+                      <div className="preview-card" />
+                    </div>
+                  </div>
+                </div>
+                <p className="theme-option-desc">
+                  Optimized for brightly lit shops, daytime sales counters, and outdoor billing.
+                </p>
+              </div>
+
+              {/* Dark Mode Card */}
+              <div
+                className={`theme-option-card ${theme === 'dark' ? 'selected' : ''}`}
+                onClick={() => setTheme('dark')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setTheme('dark') }}
+              >
+                <div className="theme-option-header">
+                  <div className="theme-option-icon dark-icon">
+                    <Moon size={20} />
+                  </div>
+                  <div className="theme-option-info">
+                    <strong>Dark Mode</strong>
+                    <small>Obsidian slate &amp; emerald</small>
+                  </div>
+                  {theme === 'dark' && (
+                    <span className="theme-check-badge">
+                      <Check size={14} /> Active
+                    </span>
+                  )}
+                </div>
+                <div className="theme-preview-box dark-preview">
+                  <div className="preview-top" />
+                  <div className="preview-body">
+                    <div className="preview-sidebar" />
+                    <div className="preview-cards">
+                      <div className="preview-card" />
+                      <div className="preview-card" />
+                    </div>
+                  </div>
+                </div>
+                <p className="theme-option-desc">
+                  Low-light interface reducing eye fatigue during evening reconciliation and late shifts.
+                </p>
+              </div>
+
+              {/* System Card */}
+              <div
+                className={`theme-option-card ${theme === 'system' ? 'selected' : ''}`}
+                onClick={() => setTheme('system')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setTheme('system') }}
+              >
+                <div className="theme-option-header">
+                  <div className="theme-option-icon system-icon">
+                    <Monitor size={20} />
+                  </div>
+                  <div className="theme-option-info">
+                    <strong>System Default</strong>
+                    <small>Matches OS ({resolvedTheme === 'dark' ? 'currently Dark' : 'currently Light'})</small>
+                  </div>
+                  {theme === 'system' && (
+                    <span className="theme-check-badge">
+                      <Check size={14} /> Active
+                    </span>
+                  )}
+                </div>
+                <div className="theme-preview-box system-preview">
+                  <div className="preview-split-left">
+                    <div className="preview-card" />
+                  </div>
+                  <div className="preview-split-right">
+                    <div className="preview-card" />
+                  </div>
+                </div>
+                <p className="theme-option-desc">
+                  Automatically adapts whenever your operating system switches between light and dark.
+                </p>
+              </div>
+            </div>
+
+            <div className="settings-save" style={{ marginTop: '28px' }}>
+              <span>Theme switches instantly across all screens and remembers your choice.</span>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              >
+                {resolvedTheme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                Quick Switch to {resolvedTheme === 'dark' ? 'Light' : 'Dark'}
               </button>
             </div>
           </div>

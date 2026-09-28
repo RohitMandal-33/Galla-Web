@@ -10,13 +10,16 @@ import {
   ExternalLink,
   LogOut,
   Menu,
+  Moon,
   MoreHorizontal,
   Settings,
   Sparkles,
   Store,
+  Sun,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useSupabase } from '@/lib/supabase-provider'
+import { useTheme } from '@/lib/theme-provider'
 import { resetDemoStore } from '@/lib/demo'
 import { avatarColor, initials } from '@/lib/format'
 import type { Business } from '@/lib/types'
@@ -46,6 +49,7 @@ export function Sidebar({
   onOpenShortcuts?: () => void
 }) {
   const { user, isDemo, signOut } = useSupabase()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const displayName = business?.name ?? 'My Business'
   const userInitials = initials(displayName)
   const userColor = avatarColor(displayName)
@@ -273,6 +277,16 @@ export function Sidebar({
               >
                 <Settings size={15} />
                 <span>Business Settings</span>
+              </button>
+              <button
+                className="popover-action"
+                onClick={() => {
+                  toggleTheme()
+                }}
+              >
+                {resolvedTheme === 'dark' ? <Sun size={15} style={{ color: '#fbbf24' }} /> : <Moon size={15} style={{ color: '#8fa597' }} />}
+                <span>{resolvedTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
+                <kbd className="popover-kbd">T</kbd>
               </button>
               {onOpenShortcuts && (
                 <button

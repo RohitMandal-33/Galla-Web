@@ -12,6 +12,7 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['N'], description: 'Quick add new transaction' },
   { keys: ['⌘', 'K'], description: 'Focus global search' },
   { keys: ['['], description: 'Toggle sidebar collapse' },
+  { keys: ['T'], description: 'Toggle dark / light mode' },
   { keys: ['Esc'], description: 'Close modals / popovers' },
 ]
 

@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Bell, Menu, Search } from 'lucide-react'
+import { Bell, Menu, Moon, Search, Sun } from 'lucide-react'
 import { avatarColor, initials } from '@/lib/format'
 import type { Business } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
+import { useTheme } from '@/lib/theme-provider'
 
 export function Topbar({
   onMenu,
@@ -22,6 +23,7 @@ export function Topbar({
   onToggleSidebar?: () => void
 }) {
   const [showNotifications, setShowNotifications] = useState(false)
+  const { resolvedTheme, toggleTheme } = useTheme()
   const notificationRef = useRef<HTMLDivElement>(null)
   const displayName = business?.name ?? 'My Business'
   const userInitials = initials(displayName)
@@ -72,6 +74,20 @@ export function Topbar({
       </div>
 
       <div className="top-actions">
+        {/* Quick Theme Toggle Button */}
+        <button
+          className="icon-button theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode (T)`}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Sun size={18} className="theme-icon theme-sun" />
+          ) : (
+            <Moon size={18} className="theme-icon theme-moon" />
+          )}
+        </button>
+
         <div className="notification-anchor" ref={notificationRef}>
           <button
             className="icon-button notification"
